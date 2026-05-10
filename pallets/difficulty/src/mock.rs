@@ -1,5 +1,5 @@
 use crate as pallet_difficulty;
-use frame_support::{derive_impl, traits::ConstU64};
+use frame_support::{derive_impl, traits::{ConstU64, Hooks}};
 use sp_core::U256;
 use sp_runtime::BuildStorage;
 
@@ -68,14 +68,13 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 /// Advance to the given block, set the timestamp (in seconds),
 /// and run `on_finalize` for both timestamp and difficulty pallets.
 pub fn run_to_block_at(block: u64, now_secs: u64) -> u64  {
-	use frame_support::traits::Hooks;
 	System::set_block_number(block);
 	let _ = pallet_timestamp::Pallet::<Test>::set(
 		frame_system::RawOrigin::None.into(),
 		now_secs * 1000,
 	);
-	<pallet_difficulty::Pallet<Test> as Hooks<u64>>::on_finalize(block);
-	<pallet_timestamp ::Pallet<Test> as Hooks<u64>>::on_finalize(block);
+	pallet_difficulty::Pallet::<Test>::on_finalize(block);
+	pallet_timestamp ::Pallet::<Test>::on_finalize(block);
 	now_secs
 }
 
