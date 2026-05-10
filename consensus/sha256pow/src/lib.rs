@@ -1,16 +1,13 @@
 //! SHA-256 double hash PoW placeholder algorithm.
 //!
 //! Algorithm: `SHA-256(SHA-256(pre_hash || nonce))` — the resulting hash is
-//! compared against a difficulty target using the multiplication-overflow
-//! method.
+//! compared against a difficulty target using the multiplication-overflow method.
 //!
-//! This is an interim algorithm and will be replaced by an ASIC-resistant
-//! scheme (see issue #38).
+//! This is an interim algorithm and will be replaced by an ASIC-resistant scheme.
 //!
-//! The core types ([`Seal`], [`Compute`], [`hash_meets_difficulty`],
-//! [`verify_seal`]) are `no_std`-compatible so the runtime can perform
-//! seal verification, making the algorithm hot-swappable via runtime
-//! upgrade.
+//! The core types ([`Seal`], [`Compute`], [`hash_meets_difficulty`], [`verify_seal`])
+//! are `no_std`-compatible so the runtime can perform seal verification, 
+//! making the algorithm hot-swappable via runtime upgrade.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
