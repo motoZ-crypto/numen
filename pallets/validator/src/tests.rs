@@ -132,7 +132,7 @@ fn lock_rejected_while_active() {
 
     new_test_ext(vec![(ALICE, lock_amount)]).execute_with(|| {
         assert_ok!(Validator::lock(RuntimeOrigin::signed(ALICE)));
-        let _ = Validator::new_session(1);
+        Validator::new_session(1);
         assert!(ActiveValidators::<Test>::get().contains(&ALICE));
         assert!(!PendingValidators::<Test>::get().contains(&ALICE));
         assert_noop!(
@@ -149,7 +149,7 @@ fn relock_after_request_exit_refreshes_lock_and_status() {
     new_test_ext(vec![(ALICE, lock_amount)]).execute_with(|| {
         // Initial lock at block 1.
         assert_ok!(Validator::lock(RuntimeOrigin::signed(ALICE)));
-        let _ = Validator::new_session(1);
+        Validator::new_session(1);
         assert_eq!(ActiveValidators::<Test>::get().to_vec(), vec![ALICE]);
         let initial = ValidatorLocks::<Test>::get(ALICE).expect("locked");
         let initial_expiry = initial.expiry_block;
@@ -163,7 +163,7 @@ fn relock_after_request_exit_refreshes_lock_and_status() {
 
         // Next session removes ALICE from the active set (our own
         // `ActiveValidators` storage reflects the truth).
-        let _ = Validator::new_session(2);
+        Validator::new_session(2);
         assert!(ActiveValidators::<Test>::get().is_empty());
         assert!(PendingValidators::<Test>::get().is_empty());
         // The currency lock is still in place; `ValidatorLocks` still exists.
@@ -493,7 +493,7 @@ fn new_session_removes_exited_validator() {
     new_test_ext(vec![(ALICE, lock_amount), (BOB, lock_amount)]).execute_with(|| {
         assert_ok!(Validator::lock(RuntimeOrigin::signed(ALICE)));
         assert_ok!(Validator::lock(RuntimeOrigin::signed(BOB)));
-        let _ = Validator::new_session(1);
+        Validator::new_session(1);
 
         assert_ok!(Validator::request_exit(RuntimeOrigin::signed(ALICE)));
 
@@ -511,7 +511,7 @@ fn new_session_removes_kicked_validators() {
     new_test_ext(vec![(ALICE, lock_amount), (BOB, lock_amount), (CHARLIE, lock_amount)]).execute_with(|| {
         assert_ok!(Validator::lock(RuntimeOrigin::signed(ALICE)));
         assert_ok!(Validator::lock(RuntimeOrigin::signed(BOB)));
-        let _ = Validator::new_session(1);
+        Validator::new_session(1);
 
         // Simulate kicks via direct storage mutation.
         ValidatorLocks::<Test>::mutate(BOB, |maybe| {
@@ -531,7 +531,7 @@ fn new_session_returns_none_when_unchanged() {
 
     new_test_ext(vec![(ALICE, lock_amount)]).execute_with(|| {
         assert_ok!(Validator::lock(RuntimeOrigin::signed(ALICE)));
-        let _ = Validator::new_session(1);
+        Validator::new_session(1);
         // No new lock and no exit: next session must be a no-op.
         assert!(Validator::new_session(2).is_none());
         assert_eq!(ActiveValidators::<Test>::get().to_vec(), vec![ALICE]);
