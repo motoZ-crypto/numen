@@ -352,7 +352,7 @@ pub mod pallet {
 
             let now = frame_system::Pallet::<T>::block_number();
             if let Some(deadline) = RejoinCooldown::<T>::get(&who) {
-                if deadline > now {
+                if deadline >= now {
                     return Err(Error::<T>::InCooldown.into());
                 }
                 RejoinCooldown::<T>::remove(&who);
