@@ -8,49 +8,67 @@ use crate::{
 	CurrentDifficulty,
 	LastBlockTimestamp,
 };
+use frame_support::traits::Get;
 use sp_core::U256;
 
-/// Bring the chain past the auto-init block. Returns the timestamp used.
-fn bootstrap(start_secs: u64) -> u64 {
-	run_to_block_at(1, start_secs);
-	start_secs
-}
+// Pallet behavior tests.
 
 #[test]
 fn normal_block_keeps_difficulty() {
 	new_test_ext().execute_with(|| {
-		let t0 = bootstrap(10_000);
+		let target: u64 = <Test as crate::Config>::TargetBlockTime::get();
+
+		let t = bootstrap(1_000_000);
 		let initial = CurrentDifficulty::<Test>::get();
 
-		run_to_block_at(2, t0 + 20);
+		run_to_block_at(2, t + target);
 		let after = CurrentDifficulty::<Test>::get();
 
-		let diff = if after > initial { after - initial } else { initial - after };
-		assert!(diff * U256::from(100u64) < initial, "drift too large: {initial:?} -> {after:?}");
+		assert!(after == initial, "drift too large: {initial:?} -> {after:?}");
 	});
 }
 
 #[test]
 fn slow_block_decreases_difficulty() {
 	new_test_ext().execute_with(|| {
-		let t0 = bootstrap(10_000);
+		let target: u64 = <Test as crate::Config>::TargetBlockTime::get();
+
+		let t = bootstrap(1_000_000);
 		let before = CurrentDifficulty::<Test>::get();
 
-		run_to_block_at(2, t0 + 40);
+		run_to_block_at(2, t + 2 * target);
 		let after = CurrentDifficulty::<Test>::get();
+
 		assert!(after < before, "slow block must lower difficulty: {before:?} -> {after:?}");
+	});
+}
+
+#[test]
+fn fast_block_increase_difficulty() {
+	new_test_ext().execute_with(|| {
+		let target: u64 = <Test as crate::Config>::TargetBlockTime::get();
+
+		let t = bootstrap(1_000_000);
+		let before = CurrentDifficulty::<Test>::get();
+
+		run_to_block_at(2, t + target / 2);
+		let after = CurrentDifficulty::<Test>::get();
+
+		assert!(before < after, "fast block must higher difficulty: {before:?} -> {after:?}");
 	});
 }
 
 #[test]
 fn anchor_unchanged_during_normal_operation() {
 	new_test_ext().execute_with(|| {
-		let t0 = bootstrap(10_000);
+		let target: u64 = <Test as crate::Config>::TargetBlockTime::get();
+		
+		let mut t = bootstrap(1_000_000);
 		let anchor_h = AnchorHeight::<Test>::get();
 		let anchor_ts = AnchorTimestamp::<Test>::get();
 
 		for i in 2u64..=6 {
-			run_to_block_at(i, t0 + 20 * (i - 1));
+			t = run_to_block_at(i, t + target);
 		}
 
 		assert_eq!(AnchorHeight::<Test>::get(), anchor_h, "anchor height must not move");
@@ -59,58 +77,70 @@ fn anchor_unchanged_during_normal_operation() {
 }
 
 #[test]
-fn break_reanchors_to_recovery_block() {
+fn anchor_unchanged_when_gap_below_threshold() {
 	new_test_ext().execute_with(|| {
-		let t0 = bootstrap(10_000);
+		let target: u64 = <Test as crate::Config>::TargetBlockTime::get();
+		let break_threshold: u64 = <Test as crate::Config>::BreakThresholdSecs::get();
 
-		run_to_block_at(2, t0 + 20);
-		run_to_block_at(3, t0 + 40);
+		let mut t = bootstrap(1_000_000);
+		let anchor_h = AnchorHeight::<Test>::get();
+		let anchor_ts = AnchorTimestamp::<Test>::get();
 
-		// Block 4 arrives 1 hour after block 3 — interruption.
-		let recovery_ts = t0 + 40 + 3_600;
-		run_to_block_at(4, recovery_ts);
+		t = run_to_block_at(2, t + target);
+		t = run_to_block_at(3, t + target);
+		t = run_to_block_at(4, t + break_threshold - 1);
+
+		assert_eq!(AnchorHeight::<Test>::get(), anchor_h, "anchor height must not move");
+		assert_eq!(AnchorTimestamp::<Test>::get(), anchor_ts, "anchor timestamp must not move");
+		assert_eq!(LastBlockTimestamp::<Test>::get(), t);
+	});
+}
+
+#[test]
+fn anchor_changed_when_gap_exceeds_threshold() {
+	new_test_ext().execute_with(|| {
+		let target: u64 = <Test as crate::Config>::TargetBlockTime::get();
+		let break_threshold: u64 = <Test as crate::Config>::BreakThresholdSecs::get();
+
+		let mut t = bootstrap(1_000_000);
+
+		t = run_to_block_at(2, t + target);
+		t = run_to_block_at(3, t + target);
+		t = run_to_block_at(4, t + break_threshold);
 
 		assert_eq!(AnchorHeight::<Test>::get(), 4, "anchor must move to recovery block");
-		assert_eq!(AnchorTimestamp::<Test>::get(), recovery_ts);
-		assert_eq!(LastBlockTimestamp::<Test>::get(), recovery_ts);
+		assert_eq!(AnchorTimestamp::<Test>::get(), t);
+		assert_eq!(LastBlockTimestamp::<Test>::get(), t);
 	});
 }
 
 #[test]
-fn break_realtime_decays() {
+fn realtime_difficulty_halves_after_one_halflife_gap() {
 	new_test_ext().execute_with(|| {
-		let t0 = bootstrap(10_000);
-		let on_schedule = crate::Pallet::<Test>::realtime_difficulty(t0 + 20);
-		let after_outage = crate::Pallet::<Test>::realtime_difficulty(t0 + 86_400);
+		let halflife: u64 = <Test as crate::Config>::Halflife::get();
 
-		assert!(
-			after_outage < on_schedule,
-			"realtime difficulty must decay during interruption: {on_schedule:?} vs {after_outage:?}"
-		);
+		let t = bootstrap(1_000_000);
+		let initial = CurrentDifficulty::<Test>::get();
+
+		let realtime_difficulty = crate::Pallet::<Test>::realtime_difficulty(t + halflife + 20);
+		let realtime_difficulty_2 = realtime_difficulty + realtime_difficulty;
+		let diff = if realtime_difficulty_2 > initial { realtime_difficulty_2 - initial } else { initial - realtime_difficulty_2 };
+
+		assert!(diff  == U256::from(0u64), "drift too large: {initial:?} -> {realtime_difficulty:?}");
 	});
 }
 
-#[test]
-fn small_gap_does_not_reanchor() {
-	new_test_ext().execute_with(|| {
-		let t0 = bootstrap(10_000);
-		let anchor_h = AnchorHeight::<Test>::get();
-
-		// Block 2 arrives 100s after block 1 — slow but well under the
-		// 1800s break threshold.
-		run_to_block_at(2, t0 + 100);
-
-		assert_eq!(AnchorHeight::<Test>::get(), anchor_h, "moderate gap must not re-anchor");
-	});
-}
+// Pure ASERT target calculation tests.
 
 #[test]
 fn on_schedule_returns_anchor() {
+	let target: u64 = <Test as crate::Config>::TargetBlockTime::get();
+	let halflife: u64 = <Test as crate::Config>::Halflife::get();
 	// If blocks are exactly on schedule, target should equal anchor_target.
 	let anchor = U256::from(1_000_000u64);
 	// time_delta = target_block_time * height_delta
-	// e.g. height_delta=10 (10th block after anchor), time_delta = 20 * 10 = 200
-	let result = compute_next_target(anchor, 200, 10, 20, 1800);
+	// height_delta=10 (10th block after anchor), time_delta = target * 10
+	let result = compute_next_target(anchor, (target * 10) as i64, 10, target, halflife);
 	// Should be very close to anchor (within rounding).
 	let diff = if result > anchor { result - anchor } else { anchor - result };
 	assert!(diff <= U256::from(1u64), "expected ~anchor, got {:?}", result);
@@ -118,30 +148,35 @@ fn on_schedule_returns_anchor() {
 
 #[test]
 fn slow_blocks_increase_target() {
+	let target: u64 = <Test as crate::Config>::TargetBlockTime::get();
+	let halflife: u64 = <Test as crate::Config>::Halflife::get();
 	// Blocks coming slower than expected -> target increases (difficulty decreases).
 	let anchor = U256::from(1_000_000u64);
-	// height_delta=10, ideal time = 200s, actual time = 400s (twice as slow)
-	let result = compute_next_target(anchor, 400, 10, 20, 1800);
+	// height_delta=10, ideal time = target*10, actual time = 2*target*10 (twice as slow)
+	let result = compute_next_target(anchor, (target * 20) as i64, 10, target, halflife);
 	assert!(result > anchor, "slow blocks should increase target");
 }
 
 #[test]
 fn fast_blocks_decrease_target() {
+	let target: u64 = <Test as crate::Config>::TargetBlockTime::get();
+	let halflife: u64 = <Test as crate::Config>::Halflife::get();
 	// Blocks coming faster than expected -> target decreases (difficulty increases).
 	let anchor = U256::from(1_000_000u64);
-	// height_delta=10, ideal time = 200s, actual time = 100s (twice as fast)
-	let result = compute_next_target(anchor, 100, 10, 20, 1800);
+	// height_delta=10, ideal time = target*10, actual time = target*5 (twice as fast)
+	let result = compute_next_target(anchor, (target * 5) as i64, 10, target, halflife);
 	assert!(result < anchor, "fast blocks should decrease target");
 }
 
 #[test]
 fn halflife_halves_target_when_fast() {
-	// If blocks arrive halflife seconds ahead of schedule, target should halve.
+	let target: u64 = <Test as crate::Config>::TargetBlockTime::get();
+	let halflife: u64 = <Test as crate::Config>::Halflife::get();
+	// If blocks arrive halflife seconds behind schedule, target should double (difficulty halves).
 	let anchor = U256::from(1u64) << 128;
-	// For target to double (halflife behind schedule):
-	// exponent = +1 -> time_delta - 20*1 = 1800 -> time_delta = 1820
+	// exponent = +1 -> time_delta - target*1 = halflife -> time_delta = halflife + target
 	// height_delta=1 (one block after anchor)
-	let result = compute_next_target(anchor, 1820, 1, 20, 1800);
+	let result = compute_next_target(anchor, (halflife + target) as i64, 1, target, halflife);
 	let expected = anchor * U256::from(2u64);
 	// Allow ~1% tolerance due to polynomial approximation.
 	let tolerance = expected / U256::from(100u64);
@@ -151,12 +186,14 @@ fn halflife_halves_target_when_fast() {
 
 #[test]
 fn no_blocks_for_30min_halves_difficulty() {
-	// 30 minutes (1800s) without blocks from anchor.
-	// height_delta=1 (first block after anchor), time_delta = 1800 + 20 = 1820
-	// exponent = (1820 - 20*1) / 1800 = 1800/1800 = 1
+	let target: u64 = <Test as crate::Config>::TargetBlockTime::get();
+	let halflife: u64 = <Test as crate::Config>::Halflife::get();
+	// One halflife (1800s) without blocks from anchor.
+	// height_delta=1, time_delta = halflife + target
+	// exponent = (time_delta - target*1) / halflife = halflife/halflife = 1
 	// target doubles -> difficulty halves.
 	let anchor = U256::from(1u64) << 128;
-	let result = compute_next_target(anchor, 1820, 1, 20, 1800);
+	let result = compute_next_target(anchor, (halflife + target) as i64, 1, target, halflife);
 	let expected = anchor * U256::from(2u64);
 	let tolerance = expected / U256::from(100u64);
 	let diff = if result > expected { result - expected } else { expected - result };
@@ -165,8 +202,10 @@ fn no_blocks_for_30min_halves_difficulty() {
 
 #[test]
 fn result_never_zero() {
+	let target: u64 = <Test as crate::Config>::TargetBlockTime::get();
+	let halflife: u64 = <Test as crate::Config>::Halflife::get();
 	// Even with extremely fast blocks, target should not be zero.
 	let anchor = U256::from(1u64);
-	let result = compute_next_target(anchor, 0, 1000, 20, 1800);
+	let result = compute_next_target(anchor, 0, 1000, target, halflife);
 	assert!(!result.is_zero(), "target must never be zero");
 }
