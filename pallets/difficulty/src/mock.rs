@@ -47,16 +47,16 @@ impl pallet_difficulty::Config for Test {
 /// Initial difficulty used by tests.
 pub const INITIAL_DIFFICULTY: u128 = 1_000_000;
 
-// Build genesis storage according to the mock runtime.
 pub fn new_test_ext() -> sp_io::TestExternalities {
-	let mut storage = frame_system::GenesisConfig::<Test>::default().build_storage().unwrap();
+	new_test_ext_with(U256::from(INITIAL_DIFFICULTY))
+}
 
-	let initial = U256::from(INITIAL_DIFFICULTY);
+pub fn new_test_ext_with(difficulty: U256) -> sp_io::TestExternalities {
+	let mut storage =
+		frame_system::GenesisConfig::<Test>::default().build_storage().unwrap();
+
 	pallet_difficulty::GenesisConfig::<Test> {
-		initial_difficulty: initial,
-		anchor_target: U256::MAX / initial,
-		anchor_timestamp: 0,
-		anchor_height: 0,
+		initial_difficulty: difficulty,
 		_marker: Default::default(),
 	}
 	.assimilate_storage(&mut storage)
@@ -68,6 +68,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 /// Advance to the given block, set the timestamp (in seconds),
 /// and run `on_finalize` for both timestamp and difficulty pallets.
 pub fn run_to_block_at(block: u64, now_secs: u64) -> u64  {
+	assert!(now_secs > 0, "block timestamp must be non-zero");
 	System::set_block_number(block);
 	let _ = pallet_timestamp::Pallet::<Test>::set(
 		frame_system::RawOrigin::None.into(),
@@ -76,10 +77,4 @@ pub fn run_to_block_at(block: u64, now_secs: u64) -> u64  {
 	pallet_difficulty::Pallet::<Test>::on_finalize(block);
 	pallet_timestamp ::Pallet::<Test>::on_finalize(block);
 	now_secs
-}
-
-/// Bring the chain past the auto-init block. Returns the timestamp used.
-pub fn bootstrap(start_secs: u64) -> u64 {
-	assert!(start_secs > 0, "bootstrap timestamp must be non-zero");
-	run_to_block_at(1, start_secs)
 }
