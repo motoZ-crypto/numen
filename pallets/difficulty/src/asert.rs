@@ -9,7 +9,7 @@
 //! All arithmetic is integer-only using 16-bit fixed-point representation.
 //! The `2^x` function is approximated via a cubic polynomial with < 0.013% error.
 
-use sp_core::U256;
+use sp_core::{U256, U512};
 
 /// Fixed-point fractional bits.
 const FRAC_BITS: i128 = 16;
@@ -38,8 +38,8 @@ pub fn compute_next_target(
 ) -> U256 {
 	// exponent = (time_delta - target_block_time * height_delta) / halflife
 	// In fixed-point: exponent_fp = ((time_delta - ideal_time) << FRAC_BITS) / halflife
-	let ideal_time = target_block_time as i128 * height_delta as i128;
-	let exponent_numer = (time_delta - ideal_time) * FRAC_ONE;
+	let ideal_time = target_block_time * height_delta;
+	let exponent_numer = (time_delta - ideal_time as i128) * FRAC_ONE;
 	let halflife_i128 = halflife as i128;
 	// Division rounds toward zero; this is acceptable for the exponent.
 	let exponent_fp = exponent_numer / halflife_i128;
@@ -78,19 +78,26 @@ pub fn compute_next_target(
 
 	// Now: next_target = anchor_target * frac_factor / FRAC_ONE * 2^int_part
 	// Apply the fractional multiplier first (to preserve precision).
-	let frac_factor_u256 = U256::from(frac_factor as u128);
-	let frac_one_u256 = U256::from(FRAC_ONE as u128);
+	let frac_factor_u256 = U256::from(frac_factor);
+	let frac_one_u256 = U256::from(FRAC_ONE);
 
-	let mut result = anchor_target * frac_factor_u256 / frac_one_u256;
+	let mut result = match anchor_target.checked_mul(frac_factor_u256) {
+		Some(p) => p / frac_one_u256,
+		None => {
+			let prod: U512 = anchor_target.full_mul(frac_factor_u256);
+			let quot: U512 = prod / U512::from(FRAC_ONE);
+			U256::try_from(quot).unwrap_or(U256::MAX)
+		},
+	};
 
 	// Apply integer exponent: shift left for positive, shift right for negative.
 	if int_part >= 0 {
 		if int_part >= 256 {
-			// Overflow — target is astronomically high, clamp to max.
+			// Astronomically high target — saturate to U256::MAX.
 			return U256::MAX;
 		}
 		let shift = int_part as u32;
-		// Check for overflow: if result has bits set in positions >= (256 - shift),
+		// Check for overflow: if `result` has bits set in positions >= (256 - shift),
 		// the shift would overflow.
 		let headroom = 256 - result.bits();
 		if shift as usize > headroom {
@@ -166,7 +173,7 @@ mod tests {
 		assert!(result.is_one(), "target must be at least 1");
 	}
 
-	/// When `int_part >= 256` the result must be clamped to `U256::MAX`.
+	/// When `int_part >= 256` the result must saturate to `U256::MAX`.
 	#[test]
 	fn extreme_positive_exponent_clamps_to_max() {
 		let anchor = U256::from(1_000_000u64);
@@ -176,16 +183,27 @@ mod tests {
 		assert_eq!(result, U256::MAX, "int_part == 256 must saturate to U256::MAX");
 	}
 
-	/// When the left-shift would overflow `U256` even for a small `int_part`,
-	/// the result must still be clamped to `U256::MAX`.
+	/// When `int_part <= -256` the result must be clamped to `U256::one()`.
+	#[test]
+	fn extreme_negative_exponent_clamps_to_one() {
+		let anchor = U256::from(1_000_000u64);
+		// halflife=1, target_block_time=1, height_delta=256, time_delta=0
+		// → numer = (0 - 256) * 65536 = -16_777_216
+		// → exponent_fp = -16_777_216, int_part = -256 (boundary).
+		let result = compute_next_target(anchor, 0, 256, 1, 1);
+		assert_eq!(result, U256::one(), "int_part == -256 must clamp to U256::one()");
+	}
+
+	/// When the left-shift would overflow `U256`, the result must saturate to `U256::MAX`.
 	#[test]
 	fn left_shift_overflow_clamps_to_max() {
-		// Anchor occupies 238 bits, leaving 18 bits of headroom after the
-		// fractional multiplication (which itself uses ~17 bits).
-		let anchor = U256::MAX >> 18;
-		// halflife=1, target_block_time=1, height_delta=0, time_delta=19
-		// → int_part = 19 > headroom, so the shift overflows.
-		let result = compute_next_target(anchor, 19, 0, 1, 1);
+		// Anchor occupies 239 bits → headroom = 17. A shift > 17 triggers the
+		// early-return overflow guard.
+		let anchor = U256::MAX >> 17;
+		// halflife=1, target_block_time=1, height_delta=0, time_delta=18
+		// → int_part = 18 (just past headroom), frac_part = 0
+		// → shift (18) > headroom (17): early return U256::MAX.
+		let result = compute_next_target(anchor, 18, 0, 1, 1);
 		assert_eq!(result, U256::MAX, "left-shift overflow must saturate to U256::MAX");
 	}
 
@@ -199,4 +217,33 @@ mod tests {
 		let result = compute_next_target(anchor, -1780, 1, 20, 1800);
 		assert!(result.is_one(), "zero result after right-shift must be clamped to 1");
 	}
+
+	/// A maximally large anchor with positive fractional exponent must rely on
+	/// the U512 fallback and saturate to `U256::MAX` without panicking.
+	#[test]
+	fn max_anchor_with_fractional_exponent_saturates_to_max() {
+		// anchor = U256::MAX, halflife=2, time_delta=1 → frac_factor ≈ 92638.
+		// `anchor * frac_factor` overflows U256, U512 fallback yields > U256::MAX,
+		// `try_from` saturates to U256::MAX.
+		let result = compute_next_target(U256::MAX, 1, 0, 1, 2);
+		assert_eq!(result, U256::MAX, "max anchor with positive frac must saturate to U256::MAX");
+	}
+
+	/// When the U256 fast path overflows but a large negative shift would
+	/// bring the true mathematical result back below `U256::MAX`, the U512
+	/// fallback must preserve that exact value.
+	#[test]
+	fn max_anchor_with_large_negative_shift_preserves_value() {
+		// anchor=U256::MAX, halflife=1, target_block_time=1, height_delta=0, time_delta=-18
+		// → int_part = -18, frac_part = 0, frac_factor = FRAC_ONE.
+		// Fast path overflows (MAX * 65536); U512 fallback yields MAX,
+		// then `>> 18` brings it down to MAX >> 18.
+		let result = compute_next_target(U256::MAX, -18, 0, 1, 1);
+		assert_eq!(
+			result,
+			U256::MAX >> 18,
+			"U512 fallback must preserve value through large negative shift"
+		);
+	}
+
 }
