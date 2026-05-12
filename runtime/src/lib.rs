@@ -241,6 +241,6 @@ impl<LocalCall> frame_system::offchain::CreateTransactionBase<LocalCall> for Run
 impl<LocalCall> frame_system::offchain::CreateBare<LocalCall> for Runtime where RuntimeCall: From<LocalCall>,
 {
 	fn create_bare(call: RuntimeCall) -> UncheckedExtrinsic {
-		generic::UncheckedExtrinsic::new_bare(call).into()
+		generic::UncheckedExtrinsic::new_bare(call)
 	}
 }

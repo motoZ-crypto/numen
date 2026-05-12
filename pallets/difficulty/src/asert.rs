@@ -103,14 +103,14 @@ pub fn compute_next_target(
 		if shift as usize > headroom {
 			return U256::MAX;
 		}
-		result = result << shift;
+		result <<= shift;
 	} else {
 		if int_part <= -256 {
 			// Underflow — clamp to minimum target of 1.
 			return U256::one();
 		}
 		let shift = (-int_part) as u32;
-		result = result >> shift;
+		result >>= shift;
 	}
 
 	// Clamp: target must be at least 1 (difficulty must not be infinite).

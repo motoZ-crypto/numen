@@ -91,7 +91,7 @@ pub fn new_partial(config: &Configuration) -> Result<Service, ServiceError> {
 		grandpa_block_import.clone(),
 		client.clone(),
 		algorithm.clone(),
-		0u32.into(),
+		0u32,
 		select_chain.clone(),
 		move |_, ()| async { Ok(sp_timestamp::InherentDataProvider::from_system_time()) },
 	);
@@ -293,7 +293,7 @@ pub fn new_full<
 			grandpa_block_import.clone(),
 			client.clone(),
 			algorithm.clone(),
-			0u32.into(),
+			0u32,
 			select_chain.clone(),
 			move |_, ()| async { Ok(sp_timestamp::InherentDataProvider::from_system_time()) },
 		);

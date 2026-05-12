@@ -50,7 +50,7 @@ impl Compute {
 		buf.extend_from_slice(&self.nonce.encode());
 
 		let first = Sha256::digest(&buf);
-		let second = Sha256::digest(&first);
+		let second = Sha256::digest(first);
 
 		H256::from_slice(&second)
 	}
@@ -247,7 +247,7 @@ mod tests {
 
 	#[test]
 	fn malformed_seal_returns_decode_error() {
-		let garbage = vec![0xDE, 0xAD];
+		let garbage = [0xDE, 0xAD];
 		let result = Seal::decode(&mut &garbage[..]);
 		assert!(result.is_err(), "malformed bytes must fail to decode");
 	}

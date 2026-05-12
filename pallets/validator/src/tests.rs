@@ -458,12 +458,12 @@ fn transfer_one_above_unlocked_balance_fails() {
 
         // height #1
         let res = Balances::transfer_keep_alive(RuntimeOrigin::signed(ALICE), BOB, unlocked_balance + 1);
-        assert_eq!(res.unwrap_err(), DispatchError::Token(TokenError::Frozen).into());
+        assert_eq!(res.unwrap_err(), DispatchError::Token(TokenError::Frozen));
 
         // height #lock_duration
         run_to_block(lock_duration);
         let res = Balances::transfer_keep_alive(RuntimeOrigin::signed(ALICE), BOB, unlocked_balance + 1);
-        assert_eq!(res.unwrap_err(), DispatchError::Token(TokenError::Frozen).into());
+        assert_eq!(res.unwrap_err(), DispatchError::Token(TokenError::Frozen));
     });
 }
 
@@ -563,7 +563,7 @@ fn new_session_drops_pending_when_capacity_full() {
         new_session(1);
 
         ValidatorLocks::<Test>::insert(
-            &newcomer,
+            newcomer,
             LockInfo {
                 amount: lock_amount,
                 lock_block: 1,
@@ -692,7 +692,7 @@ fn consecutive_offline_kicks_validator() {
         assert_eq!(ActiveValidators::<Test>::get().to_vec(), vec![ALICE, BOB]);
 
         // ALICE misses three consecutive sessions while BOB stays online.
-        for idx in 2..=(offline_threshold+1) as u32 {
+        for idx in 2..=offline_threshold+1 {
             Validator::note_offline(&ALICE);
             new_session(idx);
         }
@@ -722,7 +722,7 @@ fn intermittent_heartbeat_resets_counter() {
         assert_ok!(Validator::lock(RuntimeOrigin::signed(ALICE)));
         new_session(1);
 
-        for idx in 2..=offline_threshold as u32 {
+        for idx in 2..=offline_threshold {
             Validator::note_offline(&ALICE);
             new_session(idx);
         }
