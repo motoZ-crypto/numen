@@ -444,10 +444,10 @@ impl<T: Config> Pallet<T> {
     /// `pallet-im-online`'s `ReportUnresponsiveness` into this pallet.
     /// Repeated calls within the same session are idempotent.
     pub fn note_offline(who: &T::AccountId) {
-        if !ValidatorLocks::<T>::contains_key(&who) {
+        if !ValidatorLocks::<T>::contains_key(who) {
             return;
         }
-        OfflineThisSession::<T>::insert(&who, ());
+        OfflineThisSession::<T>::insert(who, ());
         log::debug!(
             target: LOG_TARGET,
             "validator reported offline for current session",

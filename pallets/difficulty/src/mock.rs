@@ -1,9 +1,7 @@
 use crate as pallet_difficulty;
-use frame_support::{derive_impl, traits::ConstU64};
+use frame_support::{derive_impl, traits::{ConstU64, Hooks}};
 use sp_core::U256;
 use sp_runtime::BuildStorage;
-
-type Block = frame_system::mocking::MockBlock<Test>;
 
 #[frame_support::runtime]
 mod runtime {
@@ -34,20 +32,15 @@ mod runtime {
 
 #[derive_impl(frame_system::config_preludes::TestDefaultConfig)]
 impl frame_system::Config for Test {
-	type Block = Block;
+	type Block = frame_system::mocking::MockBlock<Test>;
 }
 
 #[derive_impl(pallet_timestamp::config_preludes::TestDefaultConfig)]
 impl pallet_timestamp::Config for Test {}
 
-frame_support::parameter_types! {
-	pub const TargetBlockTime: u64 = 20;
-	pub const Halflife: u64 = 1800;
-}
-
 impl pallet_difficulty::Config for Test {
-	type TargetBlockTime = TargetBlockTime;
-	type Halflife = Halflife;
+	type TargetBlockTime = ConstU64<20>;
+	type Halflife = ConstU64<1800>;
 	type BreakThresholdSecs = ConstU64<1800>;
 }
 
@@ -55,14 +48,15 @@ impl pallet_difficulty::Config for Test {
 pub const INITIAL_DIFFICULTY: u128 = 1_000_000;
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
-	let mut storage = frame_system::GenesisConfig::<Test>::default().build_storage().unwrap();
+	new_test_ext_with(U256::from(INITIAL_DIFFICULTY))
+}
 
-	let initial = U256::from(INITIAL_DIFFICULTY);
+pub fn new_test_ext_with(difficulty: U256) -> sp_io::TestExternalities {
+	let mut storage =
+		frame_system::GenesisConfig::<Test>::default().build_storage().unwrap();
+
 	pallet_difficulty::GenesisConfig::<Test> {
-		initial_difficulty: initial,
-		anchor_target: U256::MAX / initial,
-		anchor_timestamp: 0,
-		anchor_height: 0,
+		initial_difficulty: difficulty,
 		_marker: Default::default(),
 	}
 	.assimilate_storage(&mut storage)
@@ -71,17 +65,16 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	storage.into()
 }
 
-/// Advance to the given block, set the timestamp (in seconds), and run
-/// `on_finalize` for both timestamp and difficulty pallets.
-pub fn run_to_block_at(block: u64, now_secs: u64) {
-	use frame_support::traits::Hooks;
+/// Advance to the given block, set the timestamp (in seconds),
+/// and run `on_finalize` for both timestamp and difficulty pallets.
+pub fn run_to_block_at(block: u64, now_secs: u64) -> u64  {
+	assert!(now_secs > 0, "block timestamp must be non-zero");
 	System::set_block_number(block);
 	let _ = pallet_timestamp::Pallet::<Test>::set(
 		frame_system::RawOrigin::None.into(),
 		now_secs * 1000,
 	);
-	<pallet_difficulty::Pallet<Test> as Hooks<u64>>::on_finalize(block);
-	// Clear timestamp's per-block DidUpdate flag so the next block can
-	// set it again.
-	<pallet_timestamp::Pallet<Test> as Hooks<u64>>::on_finalize(block);
+	pallet_difficulty::Pallet::<Test>::on_finalize(block);
+	pallet_timestamp ::Pallet::<Test>::on_finalize(block);
+	now_secs
 }

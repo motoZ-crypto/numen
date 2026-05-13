@@ -191,7 +191,7 @@ where
 				))
 			})?;
 			cur_hash = *header.parent_hash();
-			cur_number = cur_number - One::one();
+			cur_number -= One::one();
 		}
 		return Ok(cur_hash != new_block_hash);
 	}
@@ -209,7 +209,7 @@ where
 			))
 		})?;
 		cur_hash = *header.parent_hash();
-		cur_number = cur_number - One::one();
+		cur_number -= One::one();
 	}
 	Ok(cur_hash != finalized_hash)
 }
@@ -547,6 +547,7 @@ where
 ///
 /// `pre_runtime` is a parameter that allows a custom additional pre-runtime digest to be inserted
 /// for blocks being built. This can encode authorship information, or just be a graffiti.
+#[allow(clippy::too_many_arguments)]
 pub fn start_mining_worker<Block, C, S, Algorithm, E, SO, L, CIDP>(
 	block_import: BoxBlockImport<Block>,
 	client: Arc<C>,

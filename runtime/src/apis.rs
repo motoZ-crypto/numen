@@ -77,7 +77,7 @@ impl_runtime_apis! {
 
 			let mut result = data.check_extrinsics(&block);
 
-			// Enforce 2-second max future timestamp drift (FR-DIFF-005).
+			// Enforce 2-second max future timestamp drift.
 			// pallet_timestamp hardcodes 30s; we tighten it to 2s to prevent
 			// miners from gaming ASERT difficulty calculations.
 			if let Ok(Some(node_ts)) = data.timestamp_inherent_data() {

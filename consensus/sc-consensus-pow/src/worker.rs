@@ -118,8 +118,8 @@ where
 		self.build.lock().as_ref().map(|b| b.metadata.clone())
 	}
 
-	/// Submit a mined seal. The seal will be validated again. Returns true if the submission is
-	/// successful.
+	/// Submit a mined seal. The seal will be validated again. Returns true if the submission is successful.
+	#[allow(clippy::await_holding_lock)]
 	pub async fn submit(&self, seal: Seal) -> bool {
 		if let Some(metadata) = self.metadata() {
 			match self.algorithm.verify(

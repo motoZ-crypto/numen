@@ -1,6 +1,7 @@
 .dev
 .vscode/
 target/
+lcov.info
 
 .github/skills/
 AGENTS.md

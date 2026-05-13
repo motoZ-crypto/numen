@@ -237,7 +237,7 @@ parameter_types! {
 #[cfg(not(feature = "test-runtime"))]
 parameter_types! {
 	pub const SessionPeriod: BlockNumber = 10 * MINUTES;
-	pub const SessionOffset: BlockNumber = 0 * MINUTES;
+	pub const SessionOffset: BlockNumber = 0;
 }
 
 #[cfg(not(feature = "test-runtime"))]
@@ -245,11 +245,14 @@ impl pallet_validator::Config for Runtime {
 	type Currency = Balances;
 	type SessionInterface = ValidatorSessionAdapter;
 	type LockAmount = ConstU128<{ 1_000 * UNIT }>;
+	#[allow(clippy::identity_op)]
 	type LockDuration = ConstU32<{ 1 * DAYS }>;
 	type LockId = ValidatorLockId;
 	type MaxValidators = ConstU32<1_000>;
+	#[allow(clippy::identity_op)]
 	type RenewInterval = ConstU32<{ 1 * DAYS }>;
 	type OfflineThreshold = ConstU32<1>;
+	#[allow(clippy::identity_op)]
 	type RejoinCooldownPeriod = ConstU32<{ 1 * DAYS }>;
 }
 

@@ -50,9 +50,9 @@ fn testnet_genesis_with_extra_keys(
 		sudo: SudoConfig { key: Some(root) },
 		difficulty: DifficultyConfig {
 			initial_difficulty,
-			anchor_target: U256::zero(),
-			anchor_timestamp: 0,
-			anchor_height: 0,
+			// anchor_target: U256::zero(),
+			// anchor_timestamp: 0,
+			// anchor_height: 0,
 		},
 		session: SessionConfig { keys: session_keys },
 		validator: ValidatorConfig {

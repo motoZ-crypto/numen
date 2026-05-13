@@ -98,15 +98,8 @@ pub mod pallet {
 
 	#[pallet::genesis_config]
 	pub struct GenesisConfig<T: Config> {
-		/// Initial mining difficulty.
+		/// Initial mining difficulty. Must be non-zero.
 		pub initial_difficulty: U256,
-		/// Anchor target (U256::MAX / initial_difficulty). If zero, it is
-		/// computed automatically from `initial_difficulty`.
-		pub anchor_target: U256,
-		/// Anchor timestamp (seconds). Typically 0 for genesis.
-		pub anchor_timestamp: u64,
-		/// Anchor block height. Typically 0 for genesis.
-		pub anchor_height: u64,
 		#[serde(skip)]
 		pub _marker: core::marker::PhantomData<T>,
 	}
@@ -114,10 +107,7 @@ pub mod pallet {
 	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
 			Self {
-				initial_difficulty: Default::default(),
-				anchor_target: Default::default(),
-				anchor_timestamp: Default::default(),
-				anchor_height: Default::default(),
+				initial_difficulty: U256::one(),
 				_marker: Default::default(),
 			}
 		}
@@ -126,19 +116,9 @@ pub mod pallet {
 	#[pallet::genesis_build]
 	impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
 		fn build(&self) {
+			assert!(!self.initial_difficulty.is_zero(), "initial_difficulty must be non-zero");
 			CurrentDifficulty::<T>::put(self.initial_difficulty);
-
-			// Compute anchor target if not explicitly set.
-			let target = 
-				if self.anchor_target == U256::zero() 
-				&& self.initial_difficulty != U256::zero() {
-					U256::MAX / self.initial_difficulty
-				} else {
-					self.anchor_target
-				};
-			AnchorTarget::<T>::put(target);
-			AnchorTimestamp::<T>::put(self.anchor_timestamp);
-			AnchorHeight::<T>::put(self.anchor_height);
+			AnchorTarget::<T>::put(U256::MAX / self.initial_difficulty);
 		}
 	}
 
@@ -154,14 +134,15 @@ pub mod pallet {
 	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
 		fn on_finalize(_n: BlockNumberFor<T>) {
 			let current_height: u64 = frame_system::Pallet::<T>::block_number()
-				.try_into()
-				.unwrap_or(u64::MAX);
+										.try_into()
+										.unwrap_or(u64::MAX);
 
 			// Timestamp is in milliseconds; convert to seconds.
 			// In on_finalize the timestamp inherent has already executed,
 			// so this returns the *current* block's timestamp.
-			let now_ms: u64 =
-				pallet_timestamp::Pallet::<T>::get().try_into().unwrap_or(0u64);
+			let now_ms: u64 = pallet_timestamp::Pallet::<T>::get()
+								.try_into()
+								.unwrap_or(0u64);
 			let now_secs = now_ms / 1000;
 
 			// Auto-initialize anchor on the first block with a valid
@@ -184,12 +165,7 @@ pub mod pallet {
 			}
 
 			let height_delta = current_height.saturating_sub(anchor_height);
-
-			let time_delta = if now_secs >= anchor_ts {
-				(now_secs - anchor_ts) as i128
-			} else {
-				-((anchor_ts - now_secs) as i128)
-			};
+			let time_delta = (now_secs as i128) - (anchor_ts as i128);
 
 			let anchor_target = AnchorTarget::<T>::get();
 			if anchor_target.is_zero() {
@@ -205,12 +181,7 @@ pub mod pallet {
 				T::Halflife::get(),
 			);
 
-			// difficulty = U256::MAX / target
-			let new_difficulty = if next_target == U256::MAX {
-				U256::one()
-			} else {
-				U256::MAX / next_target
-			};
+			let new_difficulty = U256::MAX / next_target;
 
 			CurrentDifficulty::<T>::put(new_difficulty);
 
@@ -239,16 +210,6 @@ use frame_support::pallet_prelude::Get;
 use sp_core::U256;
 
 impl<T: pallet::Config> Pallet<T> {
-	/// Compute the difficulty for the *next* block using on-chain state.
-	///
-	/// Reads the current chain-state timestamp and delegates to
-	/// [`Self::realtime_difficulty`].
-	pub fn next_difficulty() -> U256 {
-		let now_ms: u64 =
-			pallet_timestamp::Pallet::<T>::get().try_into().unwrap_or(0u64);
-		Self::realtime_difficulty(now_ms / 1000)
-	}
-
 	/// Compute difficulty given an external wall-clock timestamp (seconds).
 	///
 	/// When `now_secs` is the current system time, this returns the
@@ -259,28 +220,11 @@ impl<T: pallet::Config> Pallet<T> {
 			.unwrap_or(u64::MAX);
 		let next_height = current_height.saturating_add(1);
 		let anchor_height = AnchorHeight::<T>::get();
-
-		if next_height <= anchor_height {
-			return CurrentDifficulty::<T>::get();
-		}
+		let anchor_ts = AnchorTimestamp::<T>::get();
+		let anchor_target = AnchorTarget::<T>::get();
 
 		let height_delta = next_height.saturating_sub(anchor_height);
-		let anchor_ts = AnchorTimestamp::<T>::get();
-
-		if anchor_ts == 0 {
-			return CurrentDifficulty::<T>::get();
-		}
-
-		let time_delta = if now_secs >= anchor_ts {
-			(now_secs - anchor_ts) as i128
-		} else {
-			-((anchor_ts - now_secs) as i128)
-		};
-
-		let anchor_target = AnchorTarget::<T>::get();
-		if anchor_target.is_zero() {
-			return CurrentDifficulty::<T>::get();
-		}
+		let time_delta = (now_secs as i128) - (anchor_ts as i128);
 
 		let next_target = crate::asert::compute_next_target(
 			anchor_target,
@@ -290,10 +234,6 @@ impl<T: pallet::Config> Pallet<T> {
 			T::Halflife::get(),
 		);
 
-		if next_target == U256::MAX {
-			U256::one()
-		} else {
-			U256::MAX / next_target
-		}
+		U256::MAX / next_target
 	}
 }
