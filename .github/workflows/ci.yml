@@ -3,7 +3,6 @@ name: CI
 on:
   pull_request:
     branches:
-      - dev
       - master
 
 concurrency:
@@ -11,31 +10,24 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
+  clippy:
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: Swatinem/rust-cache@v2
-
-      - if: contains(matrix.os, 'ubuntu')
-        uses: ./.github/actions/free-disk-space
-      - if: contains(matrix.os, 'ubuntu')
-        uses: ./.github/actions/ubuntu-dependencies
-      - if: contains(matrix.os, 'macos')
-        uses: ./.github/actions/macos-dependencies
-
-      - name: Build
-        run: cargo build
-        timeout-minutes: 30
-
+      - uses: ./.github/actions/free-disk-space
+      - uses: ./.github/actions/ubuntu-dependencies
       - name: Run clippy
-        run: |
-          SKIP_WASM_BUILD=1 cargo clippy --all-targets --locked --workspace --quiet
+        run: SKIP_WASM_BUILD=1 cargo clippy --all-targets --locked --workspace --quiet
         timeout-minutes: 15
 
-      - name: Run the tests
-        run: SKIP_WASM_BUILD=1 cargo test
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+      - uses: ./.github/actions/free-disk-space
+      - uses: ./.github/actions/ubuntu-dependencies
+      - name: Run tests
+        run: SKIP_WASM_BUILD=1 cargo test --workspace --locked
         timeout-minutes: 15
