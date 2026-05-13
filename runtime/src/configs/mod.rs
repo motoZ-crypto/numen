@@ -13,6 +13,8 @@ use pallet_transaction_payment::{FungibleAdapter, Multiplier, TargetedFeeAdjustm
 use sp_runtime::{traits::ConvertInto, FixedPointNumber, Perbill, Perquintill};
 use sp_version::RuntimeVersion;
 
+pub mod evm;
+
 // Local module imports
 use super::{
 	AccountId, Balance, Balances, Block, BlockNumber, Hash, Nonce, PalletInfo, Runtime,
@@ -21,7 +23,7 @@ use super::{
 	DAYS, MINUTES
 };
 
-const NORMAL_DISPATCH_RATIO: Perbill = Perbill::from_percent(75);
+pub(crate) const NORMAL_DISPATCH_RATIO: Perbill = Perbill::from_percent(75);
 
 parameter_types! {
 	pub const BlockHashCount: BlockNumber = 2400;

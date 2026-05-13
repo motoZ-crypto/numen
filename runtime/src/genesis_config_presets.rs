@@ -1,6 +1,6 @@
 use crate::{
-	AccountId, BalancesConfig, DifficultyConfig, RuntimeGenesisConfig, SessionConfig, SessionKeys,
-	SudoConfig, ValidatorConfig, UNIT,
+	AccountId, BalancesConfig, DifficultyConfig, EVMChainIdConfig, RuntimeGenesisConfig,
+	SessionConfig, SessionKeys, SudoConfig, ValidatorConfig, UNIT,
 };
 use alloc::{vec, vec::Vec};
 use frame_support::build_struct_json_patch;
@@ -57,6 +57,10 @@ fn testnet_genesis_with_extra_keys(
 		session: SessionConfig { keys: session_keys },
 		validator: ValidatorConfig {
 			initial_validators: validator_accounts,
+			..Default::default()
+		},
+		evm_chain_id: EVMChainIdConfig {
+			chain_id: 32026,
 			..Default::default()
 		},
 	})

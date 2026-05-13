@@ -149,8 +149,16 @@ pub type TxExtension = (
 );
 
 /// Unchecked extrinsic type as expected by this runtime.
+///
+/// We use `fp_self_contained::UncheckedExtrinsic` to support Frontier's
+/// self-contained Ethereum transactions alongside regular signed Substrate
+/// extrinsics. The [`SelfContainedCall`] implementation below delegates to
+/// `pallet-ethereum`, so `pallet_ethereum::transact` is dispatched as a
+/// self-contained call (signed by an EVM key, bypassing the substrate
+/// signed-extension pipeline) while all other calls behave exactly as with
+/// the stock `generic::UncheckedExtrinsic`.
 pub type UncheckedExtrinsic =
-	generic::UncheckedExtrinsic<Address, RuntimeCall, Signature, TxExtension>;
+	fp_self_contained::UncheckedExtrinsic<Address, RuntimeCall, Signature, TxExtension>;
 
 /// The payload being signed in transactions.
 pub type SignedPayload = generic::SignedPayload<RuntimeCall, TxExtension>;
@@ -227,6 +235,20 @@ mod runtime {
 
 	#[runtime::pallet_index(11)]
 	pub type Historical = pallet_session::historical;
+
+	// --- Frontier EVM stack ---
+
+	#[runtime::pallet_index(12)]
+	pub type Ethereum = pallet_ethereum;
+
+	#[runtime::pallet_index(13)]
+	pub type EVM = pallet_evm;
+
+	#[runtime::pallet_index(14)]
+	pub type EVMChainId = pallet_evm_chain_id;
+
+	#[runtime::pallet_index(15)]
+	pub type BaseFee = pallet_base_fee;
 }
 
 // pallet-im-online submits unsigned heartbeat extrinsics from offchain
@@ -241,6 +263,79 @@ impl<LocalCall> frame_system::offchain::CreateTransactionBase<LocalCall> for Run
 impl<LocalCall> frame_system::offchain::CreateBare<LocalCall> for Runtime where RuntimeCall: From<LocalCall>,
 {
 	fn create_bare(call: RuntimeCall) -> UncheckedExtrinsic {
-		generic::UncheckedExtrinsic::new_bare(call)
+		UncheckedExtrinsic::new_bare(call)
+	}
+}
+
+/// Self-contained Ethereum transaction support.
+///
+/// `pallet-ethereum`'s `transact` extrinsic is signed by an EVM key rather
+/// than a Substrate key, so it bypasses the regular signed-extension
+/// pipeline. The implementation simply delegates to the call's
+/// [`fp_self_contained::SelfContainedCall`] impl exposed by
+/// `pallet-ethereum`.
+impl fp_self_contained::SelfContainedCall for RuntimeCall {
+	type SignedInfo = sp_core::H160;
+
+	fn is_self_contained(&self) -> bool {
+		match self {
+			RuntimeCall::Ethereum(call) => call.is_self_contained(),
+			_ => false,
+		}
+	}
+
+	fn check_self_contained(
+		&self,
+	) -> Option<Result<Self::SignedInfo, sp_runtime::transaction_validity::TransactionValidityError>>
+	{
+		match self {
+			RuntimeCall::Ethereum(call) => call.check_self_contained(),
+			_ => None,
+		}
+	}
+
+	fn validate_self_contained(
+		&self,
+		info: &Self::SignedInfo,
+		dispatch_info: &sp_runtime::traits::DispatchInfoOf<RuntimeCall>,
+		len: usize,
+	) -> Option<sp_runtime::transaction_validity::TransactionValidity> {
+		match self {
+			RuntimeCall::Ethereum(call) => call.validate_self_contained(info, dispatch_info, len),
+			_ => None,
+		}
+	}
+
+	fn pre_dispatch_self_contained(
+		&self,
+		info: &Self::SignedInfo,
+		dispatch_info: &sp_runtime::traits::DispatchInfoOf<RuntimeCall>,
+		len: usize,
+	) -> Option<Result<(), sp_runtime::transaction_validity::TransactionValidityError>> {
+		match self {
+			RuntimeCall::Ethereum(call) => {
+				call.pre_dispatch_self_contained(info, dispatch_info, len)
+			}
+			_ => None,
+		}
+	}
+
+	fn apply_self_contained(
+		self,
+		info: Self::SignedInfo,
+	) -> Option<
+		sp_runtime::DispatchResultWithInfo<
+			sp_runtime::traits::PostDispatchInfoOf<RuntimeCall>,
+		>,
+	> {
+		use sp_runtime::traits::Dispatchable;
+		match self {
+			call @ RuntimeCall::Ethereum(pallet_ethereum::Call::transact { .. }) => Some(
+				call.dispatch(RuntimeOrigin::from(
+					pallet_ethereum::RawOrigin::EthereumTransaction(info),
+				)),
+			),
+			_ => None,
+		}
 	}
 }
