@@ -95,6 +95,7 @@ sp-storage = { git = "https://github.com/paritytech/polkadot-sdk", branch = "sta
 sp-transaction-pool = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2603", default-features = false }
 sp-version = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2603", default-features = false }
 substrate-wasm-builder = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2603", default-features = false }
+cumulus-primitives-proof-size-hostfunction = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2603", default-features = false }
 
 pallet-base-fee = { git = "https://github.com/polkadot-evm/frontier", branch = "stable2603", default-features = false }
 pallet-ethereum = { git = "https://github.com/polkadot-evm/frontier", branch = "stable2603", default-features = false }
