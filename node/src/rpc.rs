@@ -118,7 +118,7 @@ where
 {
 	type EstimateGasAdapter = ();
 	type RuntimeStorageOverride =
-		fc_rpc::frontier_backend_client::SystemAccountId20StorageOverride<Block, C, BE>;
+		fc_rpc::frontier_backend_client::SystemAccountId32StorageOverride<Block, C, BE>;
 }
 
 /// Instantiate all full RPC extensions (Substrate + GRANDPA + Ethereum).
