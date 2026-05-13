@@ -33,12 +33,16 @@ use crate::{Balances, Runtime, Timestamp};
 
 /// Target block gas limit (matches the Frontier template default).
 const BLOCK_GAS_LIMIT: u64 = 75_000_000;
-/// Approximate target block authoring time in milliseconds.
+/// Compute budget per block, in milliseconds, used to derive `WeightPerGas`.
 ///
-/// PoW targets ~20s per block (see [`super::TargetBlockTime`]); the EVM
-/// gas/weight conversion is parameterised against the slice of block weight
-/// available for transactions, so we pass the full block budget here.
-const WEIGHT_MILLIS_PER_BLOCK: u64 = 20_000;
+/// PoW targets ~20s of wall-clock per block (see [`super::TargetBlockTime`]),
+/// but the runtime caps actual on-chain compute to 2s of reference time
+/// (see `RuntimeBlockWeights` in [`super`]). The EVM gas/weight conversion
+/// must be calibrated against this real compute budget — not the wall-clock
+/// block time — otherwise `WeightPerGas` is under-counted and a single
+/// large-gas transaction can exhaust the block weight budget long before
+/// reaching [`BLOCK_GAS_LIMIT`].
+const WEIGHT_MILLIS_PER_BLOCK: u64 = 2_000;
 /// Maximum PoV size (only relevant on parachains; kept for parity with the
 /// Frontier template formula).
 const MAX_POV_SIZE: u64 = 5 * 1024 * 1024;

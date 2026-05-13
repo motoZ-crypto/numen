@@ -152,9 +152,11 @@ pub type TxExtension = (
 ///
 /// We use `fp_self_contained::UncheckedExtrinsic` to support Frontier's
 /// self-contained Ethereum transactions alongside regular signed Substrate
-/// extrinsics. Until `pallet-ethereum` is wired in, the [`SelfContainedCall`]
-/// implementation reports no self-contained calls, keeping behaviour identical
-/// to the stock `generic::UncheckedExtrinsic`.
+/// extrinsics. The [`SelfContainedCall`] implementation below delegates to
+/// `pallet-ethereum`, so `pallet_ethereum::transact` is dispatched as a
+/// self-contained call (signed by an EVM key, bypassing the substrate
+/// signed-extension pipeline) while all other calls behave exactly as with
+/// the stock `generic::UncheckedExtrinsic`.
 pub type UncheckedExtrinsic =
 	fp_self_contained::UncheckedExtrinsic<Address, RuntimeCall, Signature, TxExtension>;
 
