@@ -245,7 +245,7 @@ pub fn new_full<
 	fc_mapping_sync::set_max_pending_notifications_per_subscriber(512);
 	let pubsub_notification_sinks: fc_mapping_sync::EthereumBlockNotificationSinks<
 		fc_mapping_sync::EthereumBlockNotification<Block>,
-	> = Default::default();
+	> = fc_mapping_sync::EthereumBlockNotificationSinks::default();
 	let pubsub_notification_sinks = Arc::new(pubsub_notification_sinks);
 
 	// Use the Ethereum-style subscription id provider.
