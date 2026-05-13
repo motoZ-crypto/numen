@@ -267,50 +267,73 @@ impl<LocalCall> frame_system::offchain::CreateBare<LocalCall> for Runtime where 
 
 /// Self-contained Ethereum transaction support.
 ///
-/// `pallet-ethereum`'s `transact` extrinsic is signed by an EVM key rather than
-/// a Substrate key, so it bypasses the regular signed-extension pipeline. Until
-/// the pallet is wired into the runtime, no call is self-contained; the trait
-/// impl below is therefore a uniform `false`/`None` placeholder.
+/// `pallet-ethereum`'s `transact` extrinsic is signed by an EVM key rather
+/// than a Substrate key, so it bypasses the regular signed-extension
+/// pipeline. The implementation simply delegates to the call's
+/// [`fp_self_contained::SelfContainedCall`] impl exposed by
+/// `pallet-ethereum`.
 impl fp_self_contained::SelfContainedCall for RuntimeCall {
 	type SignedInfo = sp_core::H160;
 
 	fn is_self_contained(&self) -> bool {
-		false
+		match self {
+			RuntimeCall::Ethereum(call) => call.is_self_contained(),
+			_ => false,
+		}
 	}
 
 	fn check_self_contained(
 		&self,
 	) -> Option<Result<Self::SignedInfo, sp_runtime::transaction_validity::TransactionValidityError>>
 	{
-		None
+		match self {
+			RuntimeCall::Ethereum(call) => call.check_self_contained(),
+			_ => None,
+		}
 	}
 
 	fn validate_self_contained(
 		&self,
-		_info: &Self::SignedInfo,
-		_dispatch_info: &sp_runtime::traits::DispatchInfoOf<RuntimeCall>,
-		_len: usize,
+		info: &Self::SignedInfo,
+		dispatch_info: &sp_runtime::traits::DispatchInfoOf<RuntimeCall>,
+		len: usize,
 	) -> Option<sp_runtime::transaction_validity::TransactionValidity> {
-		None
+		match self {
+			RuntimeCall::Ethereum(call) => call.validate_self_contained(info, dispatch_info, len),
+			_ => None,
+		}
 	}
 
 	fn pre_dispatch_self_contained(
 		&self,
-		_info: &Self::SignedInfo,
-		_dispatch_info: &sp_runtime::traits::DispatchInfoOf<RuntimeCall>,
-		_len: usize,
+		info: &Self::SignedInfo,
+		dispatch_info: &sp_runtime::traits::DispatchInfoOf<RuntimeCall>,
+		len: usize,
 	) -> Option<Result<(), sp_runtime::transaction_validity::TransactionValidityError>> {
-		None
+		match self {
+			RuntimeCall::Ethereum(call) => {
+				call.pre_dispatch_self_contained(info, dispatch_info, len)
+			}
+			_ => None,
+		}
 	}
 
 	fn apply_self_contained(
 		self,
-		_info: Self::SignedInfo,
+		info: Self::SignedInfo,
 	) -> Option<
 		sp_runtime::DispatchResultWithInfo<
 			sp_runtime::traits::PostDispatchInfoOf<RuntimeCall>,
 		>,
 	> {
-		None
+		use sp_runtime::traits::Dispatchable;
+		match self {
+			call @ RuntimeCall::Ethereum(pallet_ethereum::Call::transact { .. }) => Some(
+				call.dispatch(RuntimeOrigin::from(
+					pallet_ethereum::RawOrigin::EthereumTransaction(info),
+				)),
+			),
+			_ => None,
+		}
 	}
 }
