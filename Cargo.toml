@@ -50,6 +50,7 @@ sc-consensus-grandpa-rpc = { git = "https://github.com/paritytech/polkadot-sdk",
 sc-consensus-pow = { path = "./consensus/sc-consensus-pow", default-features = false }
 sc-executor = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2603", default-features = false }
 sc-network = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2603", default-features = false }
+sc-network-sync = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2603", default-features = false }
 sc-offchain = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2603", default-features = false }
 sc-rpc = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2603", default-features = false }
 sc-service = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2603", default-features = false }
@@ -109,6 +110,15 @@ fp-evm = { git = "https://github.com/polkadot-evm/frontier", branch = "stable260
 fp-rpc = { git = "https://github.com/polkadot-evm/frontier", branch = "stable2603", default-features = false }
 fp-self-contained = { git = "https://github.com/polkadot-evm/frontier", branch = "stable2603", default-features = false, features = ["serde"] }
 ethereum = { version = "0.18.2", default-features = false }
+
+# Frontier client (node-only) crates.
+fc-api = { git = "https://github.com/polkadot-evm/frontier", branch = "stable2603" }
+fc-consensus = { git = "https://github.com/polkadot-evm/frontier", branch = "stable2603" }
+fc-db = { git = "https://github.com/polkadot-evm/frontier", branch = "stable2603", features = ["rocksdb"] }
+fc-mapping-sync = { git = "https://github.com/polkadot-evm/frontier", branch = "stable2603" }
+fc-rpc = { git = "https://github.com/polkadot-evm/frontier", branch = "stable2603" }
+fc-rpc-core = { git = "https://github.com/polkadot-evm/frontier", branch = "stable2603" }
+fc-storage = { git = "https://github.com/polkadot-evm/frontier", branch = "stable2603" }
 
 [profile.release]
 opt-level = 3
