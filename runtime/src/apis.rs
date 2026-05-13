@@ -86,8 +86,11 @@ impl_runtime_apis! {
 
 				for ext_result in block.extrinsics() {
 					let Ok(ext) = ext_result else { continue };
+					// `fp_self_contained::UncheckedExtrinsic` is a newtype around
+					// `generic::UncheckedExtrinsic`, so reach into `.0` to get the
+					// inner extrinsic with the `function` field.
 					if let RuntimeCall::Timestamp(pallet_timestamp::Call::set { now }) =
-						&ext.function
+						&ext.0.function
 					{
 						check_timestamp_drift(
 							&mut result,

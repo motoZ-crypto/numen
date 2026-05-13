@@ -149,8 +149,14 @@ pub type TxExtension = (
 );
 
 /// Unchecked extrinsic type as expected by this runtime.
+///
+/// We use `fp_self_contained::UncheckedExtrinsic` to support Frontier's
+/// self-contained Ethereum transactions alongside regular signed Substrate
+/// extrinsics. Until `pallet-ethereum` is wired in, the [`SelfContainedCall`]
+/// implementation reports no self-contained calls, keeping behaviour identical
+/// to the stock `generic::UncheckedExtrinsic`.
 pub type UncheckedExtrinsic =
-	generic::UncheckedExtrinsic<Address, RuntimeCall, Signature, TxExtension>;
+	fp_self_contained::UncheckedExtrinsic<Address, RuntimeCall, Signature, TxExtension>;
 
 /// The payload being signed in transactions.
 pub type SignedPayload = generic::SignedPayload<RuntimeCall, TxExtension>;
@@ -241,6 +247,56 @@ impl<LocalCall> frame_system::offchain::CreateTransactionBase<LocalCall> for Run
 impl<LocalCall> frame_system::offchain::CreateBare<LocalCall> for Runtime where RuntimeCall: From<LocalCall>,
 {
 	fn create_bare(call: RuntimeCall) -> UncheckedExtrinsic {
-		generic::UncheckedExtrinsic::new_bare(call)
+		UncheckedExtrinsic::new_bare(call)
+	}
+}
+
+/// Self-contained Ethereum transaction support.
+///
+/// `pallet-ethereum`'s `transact` extrinsic is signed by an EVM key rather than
+/// a Substrate key, so it bypasses the regular signed-extension pipeline. Until
+/// the pallet is wired into the runtime, no call is self-contained; the trait
+/// impl below is therefore a uniform `false`/`None` placeholder.
+impl fp_self_contained::SelfContainedCall for RuntimeCall {
+	type SignedInfo = sp_core::H160;
+
+	fn is_self_contained(&self) -> bool {
+		false
+	}
+
+	fn check_self_contained(
+		&self,
+	) -> Option<Result<Self::SignedInfo, sp_runtime::transaction_validity::TransactionValidityError>>
+	{
+		None
+	}
+
+	fn validate_self_contained(
+		&self,
+		_info: &Self::SignedInfo,
+		_dispatch_info: &sp_runtime::traits::DispatchInfoOf<RuntimeCall>,
+		_len: usize,
+	) -> Option<sp_runtime::transaction_validity::TransactionValidity> {
+		None
+	}
+
+	fn pre_dispatch_self_contained(
+		&self,
+		_info: &Self::SignedInfo,
+		_dispatch_info: &sp_runtime::traits::DispatchInfoOf<RuntimeCall>,
+		_len: usize,
+	) -> Option<Result<(), sp_runtime::transaction_validity::TransactionValidityError>> {
+		None
+	}
+
+	fn apply_self_contained(
+		self,
+		_info: Self::SignedInfo,
+	) -> Option<
+		sp_runtime::DispatchResultWithInfo<
+			sp_runtime::traits::PostDispatchInfoOf<RuntimeCall>,
+		>,
+	> {
+		None
 	}
 }
