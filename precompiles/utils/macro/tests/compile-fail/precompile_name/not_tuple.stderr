@@ -1,0 +1,5 @@
+error: Expected tuple
+  --> tests/compile-fail/precompile_name/not_tuple.rs:22:20
+   |
+22 | type Precompiles = Dummy;
+   |                    ^^^^^

@@ -1,0 +1,5 @@
+error: Codec can only be derived for structs with named fields
+  --> tests/compile-fail/derive_codec/enum.rs:22:6
+   |
+22 | enum Test {
+   |      ^^^^

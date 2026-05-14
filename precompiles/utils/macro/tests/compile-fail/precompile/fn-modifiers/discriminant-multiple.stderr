@@ -1,0 +1,5 @@
+error: The discriminant attribute must be the only precompile attribute of a function
+  --> tests/compile-fail/precompile/fn-modifiers/discriminant-multiple.rs:26:16
+   |
+26 |     #[precompile::discriminant]
+   |                   ^^^^^^^^^^^^
