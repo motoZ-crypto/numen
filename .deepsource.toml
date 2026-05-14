@@ -3,7 +3,7 @@ version = 1
 [[analyzers]]
 name = "rust"
 
-  [analyzers.meta]
-  exclude_patterns = [
-    "precompiles/utils/macro/tests/**"
-  ]
+[analyzers.meta]
+exclude_patterns = [
+  "precompiles/utils/**"
+]
