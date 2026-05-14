@@ -20,6 +20,7 @@ use pallet_evm::{
 	PrecompileHandle, PrecompileResult, PrecompileSet,
 };
 use pallet_evm_precompile_bn128::{Bn128Add, Bn128Mul, Bn128Pairing};
+use pallet_evm_precompile_balances_erc20::{Erc20BalancesPrecompile, Erc20Metadata};
 use pallet_evm_precompile_modexp::Modexp;
 use pallet_evm_precompile_simple::{ECRecover, Identity, Ripemd160, Sha256};
 use sp_core::{H160, U256};
@@ -83,13 +84,25 @@ impl FindAuthor<H160> for EvmFindAuthorZero {
 	}
 }
 
-/// Precompile set covering the standard Ethereum precompiles 1-8.
+/// ERC20 metadata for the native UNIT token, injected into the
+/// `balances-erc20` precompile.
+pub struct NativeErc20Metadata;
+impl Erc20Metadata for NativeErc20Metadata {
+	const NAME: &'static str = "UNIT";
+	const SYMBOL: &'static str = "UNIT";
+	const DECIMALS: u8 = 18;
+}
+
+/// Precompile set covering the standard Ethereum precompiles 1-8 plus the
+/// chain-specific `balances-erc20` precompile at `0x0000…0802`, which
+/// exposes the native balance pallet through an ERC20 interface and adds a
+/// `withdraw(bytes32,uint256)` helper for EVM -> Substrate transfers.
 ///
-/// The chain does not yet expose any chain-specific precompiles; addresses
-/// 9 and above are unallocated. `ECRecover`, `SHA256`, `RIPEMD160` and
-/// `Identity` use [`pallet_evm_precompile_simple`]; modexp uses
+/// `ECRecover`, `SHA256`, `RIPEMD160` and `Identity` use
+/// [`pallet_evm_precompile_simple`]; modexp uses
 /// [`pallet_evm_precompile_modexp`]; the bn128 curve precompiles use
-/// [`pallet_evm_precompile_bn128`].
+/// [`pallet_evm_precompile_bn128`]; the chain-specific ERC20 facade comes
+/// from [`pallet_evm_precompile_balances_erc20`].
 pub struct FrontierPrecompiles<R>(PhantomData<R>);
 
 impl<R> FrontierPrecompiles<R>
@@ -99,7 +112,7 @@ where
 	pub fn new() -> Self {
 		Self(PhantomData)
 	}
-	pub fn used_addresses() -> [H160; 8] {
+	pub fn used_addresses() -> [H160; 9] {
 		[
 			hash(1),
 			hash(2),
@@ -109,6 +122,7 @@ where
 			hash(6),
 			hash(7),
 			hash(8),
+			hash(0x0802),
 		]
 	}
 }
@@ -124,7 +138,11 @@ where
 
 impl<R> PrecompileSet for FrontierPrecompiles<R>
 where
-	R: pallet_evm::Config,
+	R: pallet_evm::Config + pallet_timestamp::Config<Moment = u64>,
+	pallet_evm::AccountIdOf<R>: From<[u8; 32]>,
+	<<R as pallet_evm::Config>::Currency as frame_support::traits::Currency<
+		pallet_evm::AccountIdOf<R>,
+	>>::Balance: TryFrom<U256> + Into<U256>,
 {
 	fn execute(&self, handle: &mut impl PrecompileHandle) -> Option<PrecompileResult> {
 		match handle.code_address() {
@@ -136,6 +154,7 @@ where
 			a if a == hash(6) => Some(Bn128Add::execute(handle)),
 			a if a == hash(7) => Some(Bn128Mul::execute(handle)),
 			a if a == hash(8) => Some(Bn128Pairing::execute(handle)),
+			a if a == hash(0x0802) => Some(Erc20BalancesPrecompile::<R, NativeErc20Metadata>::execute(handle)),
 			_ => None,
 		}
 	}

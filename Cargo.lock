@@ -1481,6 +1481,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "console"
+version = "0.16.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d64e8af5551369d19cf50138de61f1c42074ab970f74e99be916646777f8fc87"
+dependencies = [
+ "encode_unicode",
+ "libc",
+ "windows-sys 0.61.2",
+]
+
+[[package]]
 name = "const-hex"
 version = "1.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2425,7 +2436,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.117",
- "unicode-xid",
 ]
 
 [[package]]
@@ -4268,6 +4278,12 @@ name = "hex-literal"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6fe2267d4ed49bc07b63801559be28c718ea06c4738b7a03c94df7386d2cde46"
+
+[[package]]
+name = "hex-literal"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e712f64ec3850b98572bffac52e2c6f282b29fe6c5fa6d42334b30be438d95c1"
 
 [[package]]
 name = "hickory-proto"
@@ -6975,7 +6991,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "hash-db",
- "hex-literal",
+ "hex-literal 0.4.1",
  "impl-trait-for-tuples",
  "log",
  "parity-scale-codec",
@@ -6994,6 +7010,26 @@ dependencies = [
  "frame-system",
  "parity-scale-codec",
  "scale-info",
+]
+
+[[package]]
+name = "pallet-evm-precompile-balances-erc20"
+version = "0.1.0"
+dependencies = [
+ "fp-evm",
+ "frame-support",
+ "frame-system",
+ "hex-literal 1.1.0",
+ "libsecp256k1",
+ "pallet-balances",
+ "pallet-evm",
+ "pallet-timestamp",
+ "parity-scale-codec",
+ "precompile-utils",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
 ]
 
 [[package]]
@@ -7757,7 +7793,7 @@ source = "git+https://github.com/paritytech/polkadot-sdk?branch=stable2603#9d053
 dependencies = [
  "bitvec",
  "bounded-collections",
- "hex-literal",
+ "hex-literal 0.4.1",
  "log",
  "parity-scale-codec",
  "polkadot-core-primitives",
@@ -8056,14 +8092,14 @@ dependencies = [
 name = "precompile-utils"
 version = "0.1.0"
 dependencies = [
- "derive_more 1.0.0",
+ "derive_more 2.1.1",
  "environmental",
  "evm",
  "fp-evm",
  "frame-support",
  "frame-system",
  "hex",
- "hex-literal",
+ "hex-literal 1.1.0",
  "impl-trait-for-tuples",
  "log",
  "num_enum",
@@ -8105,7 +8141,7 @@ dependencies = [
  "fp-evm",
  "frame-support",
  "frame-system",
- "hex-literal",
+ "hex-literal 1.1.0",
  "pallet-balances",
  "pallet-evm",
  "pallet-timestamp",
@@ -9685,7 +9721,7 @@ name = "sc-informant"
 version = "0.55.0"
 source = "git+https://github.com/paritytech/polkadot-sdk?branch=stable2603#c112e83f4f6b6f8818affb900edcfb34d6fd2af0"
 dependencies = [
- "console",
+ "console 0.15.11",
  "futures",
  "futures-timer",
  "log",
@@ -10249,7 +10285,7 @@ version = "45.0.0"
 source = "git+https://github.com/paritytech/polkadot-sdk?branch=stable2603#c112e83f4f6b6f8818affb900edcfb34d6fd2af0"
 dependencies = [
  "chrono",
- "console",
+ "console 0.15.11",
  "is-terminal",
  "libc",
  "log",
@@ -10933,9 +10969,9 @@ dependencies = [
 
 [[package]]
 name = "similar"
-version = "2.7.0"
+version = "3.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bbbb5d9659141646ae647b42fe094daf6c6192d1620870b449d9557f748b2daa"
+checksum = "04d93e861ede2e497b47833469b8ec9d5c07fa4c78ce7a00f6eb7dd8168b4b3f"
 dependencies = [
  "bstr",
  "unicode-segmentation",
@@ -10943,11 +10979,11 @@ dependencies = [
 
 [[package]]
 name = "similar-asserts"
-version = "1.7.0"
+version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b5b441962c817e33508847a22bd82f03a30cff43642dc2fae8b050566121eb9a"
+checksum = "997e6ca38e97437973fc9f7f50a50d1274cacd874341a4960fea90067291038c"
 dependencies = [
- "console",
+ "console 0.16.3",
  "similar",
 ]
 
@@ -11241,6 +11277,7 @@ dependencies = [
  "pallet-ethereum",
  "pallet-evm",
  "pallet-evm-chain-id",
+ "pallet-evm-precompile-balances-erc20",
  "pallet-evm-precompile-bn128",
  "pallet-evm-precompile-modexp",
  "pallet-evm-precompile-sha3fips",
@@ -12198,7 +12235,7 @@ dependencies = [
  "derive-where",
  "environmental",
  "frame-support",
- "hex-literal",
+ "hex-literal 0.4.1",
  "impl-trait-for-tuples",
  "parity-scale-codec",
  "scale-info",
@@ -12406,7 +12443,7 @@ dependencies = [
  "array-bytes 6.2.3",
  "build-helper",
  "cargo_metadata",
- "console",
+ "console 0.15.11",
  "filetime",
  "frame-metadata",
  "jobserver",
@@ -14381,6 +14418,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1e38bc4d79ed67fd075bcc251a1c39b32a1776bbe92e5bef1f0bf1f8c531853b"
 dependencies = [
  "windows-targets 0.52.6",
+]
+
+[[package]]
+name = "windows-sys"
+version = "0.61.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ae137229bcbd6cdf0f7b80a31df61766145077ddf49416a728b02cb3921ff3fc"
+dependencies = [
+ "windows-link 0.2.1",
 ]
 
 [[package]]

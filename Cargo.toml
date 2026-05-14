@@ -13,6 +13,7 @@ members = [
     "pallets/difficulty",
     "pallets/reward",
     "pallets/validator",
+    "precompiles/balances-erc20",
     "precompiles/utils",
     "precompiles/utils/macro",
     "precompiles/utils/tests-external",
@@ -43,10 +44,10 @@ codec = { version = "3.7.4", default-features = false, package = "parity-scale-c
 environmental = { version = "1.1.4", default-features = false }
 num_enum = { version = "0.7.6", default-features = false }
 impl-trait-for-tuples = "0.2.3"
-derive_more = { version = "1.0", default-features = false }
+derive_more = { version = "2.1.1", default-features = false }
 hex = { version = "0.4.3", default-features = false, features = ["alloc"] }
-hex-literal = "0.4.1"
-similar-asserts = "1.7.0"
+hex-literal = "1.1.0"
+similar-asserts = "2.0.0"
 evm = { git = "https://github.com/rust-ethereum/evm.git", branch = "v0.x", default-features = false }
 frame-benchmarking-cli = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2603", default-features = false }
 frame-metadata-hash-extension = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2603", default-features = false }
