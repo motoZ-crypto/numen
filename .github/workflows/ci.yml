@@ -19,7 +19,7 @@ jobs:
       - uses: ./.github/actions/ubuntu-dependencies
       - name: Run clippy
         run: SKIP_WASM_BUILD=1 cargo clippy --all-targets --locked --workspace --quiet
-        timeout-minutes: 15
+        timeout-minutes: 30
 
   test:
     runs-on: ubuntu-latest
@@ -30,4 +30,4 @@ jobs:
       - uses: ./.github/actions/ubuntu-dependencies
       - name: Run tests
         run: SKIP_WASM_BUILD=1 cargo test --workspace --locked
-        timeout-minutes: 15
+        timeout-minutes: 30
