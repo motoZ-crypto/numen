@@ -1,15 +1,78 @@
 use crate::{
-	AccountId, BalancesConfig, DifficultyConfig, EVMChainIdConfig, RuntimeGenesisConfig,
-	SessionConfig, SessionKeys, SudoConfig, ValidatorConfig, UNIT,
+	AccountId, BalancesConfig, DifficultyConfig, EVMChainIdConfig, EVMConfig,
+	RuntimeGenesisConfig, SessionConfig, SessionKeys, SudoConfig, ValidatorConfig, UNIT,
 };
-use alloc::{vec, vec::Vec};
+use alloc::{collections::BTreeMap, vec, vec::Vec};
+use fp_evm::GenesisAccount;
 use frame_support::build_struct_json_patch;
 use pallet_im_online::sr25519::AuthorityId as ImOnlineId;
 use serde_json::Value;
 use sp_consensus_grandpa::AuthorityId as GrandpaId;
-use sp_core::U256;
+use sp_core::{H160, U256};
 use sp_genesis_builder::{self, PresetId};
 use sp_keyring::{Ed25519Keyring, Sr25519Keyring};
+
+/// Per-account starting balance for the well-known Frontier dev EVM accounts
+/// pre-funded by every preset (including `integration`). One million UNIT is
+/// far more than any tooling test needs, while still leaving headroom against
+/// the 1 billion UNIT total supply seeded into the substrate-side balances.
+const DEV_EVM_ACCOUNT_BALANCE: u128 = 1_000_000 * UNIT;
+
+/// Well-known Frontier dev ECDSA accounts pre-funded on the EVM side.
+///
+/// These six addresses (Alith, Baltathar, Charleth, Dorothy, Ethan, Faith)
+/// have publicly documented private keys shipped with every Frontier-based
+/// node template, so Hardhat / Foundry / MetaMask can drive the chain
+/// out-of-the-box without first having to bridge funds from a substrate
+/// account. They MUST NOT be used in any non-development network.
+fn dev_evm_accounts() -> BTreeMap<H160, GenesisAccount> {
+	let balance = U256::from(DEV_EVM_ACCOUNT_BALANCE);
+	let make = |bytes: [u8; 20]| {
+		(
+			H160::from(bytes),
+			GenesisAccount {
+				nonce: U256::zero(),
+				balance,
+				storage: Default::default(),
+				code: Default::default(),
+			},
+		)
+	};
+	[
+		// Alith
+		make([
+			0xf2, 0x4f, 0xf3, 0xa9, 0xcf, 0x04, 0xc7, 0x1d, 0xbc, 0x94, 0xd0, 0xb5, 0x66, 0xf7,
+			0xa2, 0x7b, 0x94, 0x56, 0x6c, 0xac,
+		]),
+		// Baltathar
+		make([
+			0x3c, 0xd0, 0xa7, 0x05, 0xa2, 0xdc, 0x65, 0xe5, 0xb1, 0xe1, 0x20, 0x58, 0x96, 0xba,
+			0xa2, 0xbe, 0x8a, 0x07, 0xc6, 0xe0,
+		]),
+		// Charleth
+		make([
+			0x79, 0x8d, 0x4b, 0xa9, 0xba, 0xf0, 0x06, 0x4e, 0xc1, 0x9e, 0xb4, 0xf0, 0xa1, 0xa4,
+			0x57, 0x85, 0xae, 0x9d, 0x6d, 0xfc,
+		]),
+		// Dorothy
+		make([
+			0x77, 0x35, 0x39, 0xd4, 0xac, 0x0e, 0x78, 0x62, 0x33, 0xd9, 0x0a, 0x23, 0x36, 0x54,
+			0xcc, 0xee, 0x26, 0xa6, 0x13, 0xd9,
+		]),
+		// Ethan
+		make([
+			0xff, 0x64, 0xd3, 0xf6, 0xef, 0xe2, 0x31, 0x7e, 0xe2, 0x80, 0x7d, 0x22, 0x3a, 0x0b,
+			0xdc, 0x4c, 0x0c, 0x49, 0xdf, 0xdb,
+		]),
+		// Faith
+		make([
+			0xc0, 0xf0, 0xf4, 0xab, 0x32, 0x4c, 0x46, 0xe5, 0x5d, 0x02, 0xd0, 0x03, 0x33, 0x43,
+			0xb4, 0xbe, 0x8a, 0x55, 0x53, 0x2d,
+		]),
+	]
+	.into_iter()
+	.collect()
+}
 
 fn testnet_genesis(
 	endowed_accounts: Vec<AccountId>,
@@ -61,6 +124,10 @@ fn testnet_genesis_with_extra_keys(
 		},
 		evm_chain_id: EVMChainIdConfig {
 			chain_id: 32026,
+			..Default::default()
+		},
+		evm: EVMConfig {
+			accounts: dev_evm_accounts(),
 			..Default::default()
 		},
 	})

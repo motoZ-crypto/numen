@@ -72,7 +72,7 @@ zombienet -p native test scenarios/04-network-partition.zndsl
 zombienet -p native test scenarios/05-validator-offline-kick.zndsl
 zombienet -p native test scenarios/06-max-validators-capacity.zndsl
 zombienet -p native test scenarios/07-equivocation-placeholder.zndsl
-zombienet -p native test scenarios/99-evm-placeholder.zndsl
+zombienet -p native test scenarios/08-evm-tooling.zndsl
 
 # 4. (optional) spawn the network without a test for manual exploration
 zombienet -p native spawn zombienet.toml
@@ -96,14 +96,14 @@ zombienet -p native spawn zombienet.toml
 | 05-validator-offline-kick | Pausing bob causes ImOnline to detect the missing heartbeat and pallet-validator to kick him after the threshold. After he is removed from `session.validators` and his process is resumed, GRANDPA finality continues on the reduced set.                                                                    |
 | 06-max-validators-capacity| Capacity check: with `MaxValidators = 4` and 4 already-active validators, an additional `validator.lock()` from eve is rejected at the candidate-promotion stage and the active set stays at 4.                                                                                                               |
 | 07-equivocation-placeholder | Placeholder pending a proper GRANDPA equivocation-injection harness.                                                                                                                                                                                                                                       |
-| 99-evm-placeholder        | Placeholder until Frontier (pallet-evm + pallet-ethereum + Ethereum-compatible RPC) is integrated into the runtime.                                                                                                                                                                                           |
+| 08-evm-tooling            | Connects ethers v6 to alice's Frontier-compatible RPC, asserts `eth_chainId == 32026`, signs and broadcasts a contract-creation tx with the pre-funded Alith dev key, then verifies the deployed runtime bytecode matches `0x00` (single STOP).                                                              |
 
 ## Known limitations
 
 * zombienet `<node>: pause` (SIGSTOP) freezes the process while keeping its TCP sockets open, so GRANDPA peers wait for the paused node's votes until round timeouts elapse and finality stalls (~10 min/block). Whenever a sub-scenario asserts on finality during the outage, it must use `<node>: restart after N seconds` (a real SIGTERM + re-spawn) instead. `pause` is still acceptable when the offline window only verifies non-finality properties (e.g. PoW continues, ImOnline kicks).
 * Scenario 03 needs a long warm-up (~5 minutes / 60 blocks) so the ASERT controller actually throttles the combined 4-miner hashrate near the target before miners are paused. Without this warm-up, alice solo can still meet the target on her own and ASERT keeps raising difficulty.
 * zombienet's bundled `@polkadot/util` (13.x) emits a "multiple versions installed" warning on stderr because our `tests/integration/node_modules` ships 14.x. The warning is harmless and originates inside the zombienet binary itself.
-* EVM and equivocation scenarios are placeholders pending Frontier integration and an equivocation-injection harness.
+* The equivocation scenario is still a placeholder pending an equivocation-injection harness.
 * Long-soak runs are not automated; wrap `bash scripts/run-all.sh` in a loop or extend a scenario with longer timeouts as needed.
 * Scenarios 01, 02, 05 can be timing-sensitive: they assume PoW blocks land within ~20s and that ImOnline does not kick a validator within the test window. On slow hardware or under heavy load the difficulty / heartbeat dynamics can stretch the validator-rotation steps past the assertion deadlines. If a run flakes, retry; if it flakes consistently, raise the per-step `within ... seconds` budget in the corresponding `.zndsl` file.
 

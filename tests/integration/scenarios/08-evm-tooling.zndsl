@@ -1,0 +1,10 @@
+Description: EVM developer-tooling smoke test - deploys a minimal contract via ethers v6 over the Frontier-compatible JSON-RPC, asserts chain id 32026 and the deployed runtime bytecode (single STOP byte). Then drives an EVM<->Substrate round-trip through the balances-erc20 precompile at 0x0802. Uses the Alith dev account pre-funded by the integration genesis preset.
+Network: ../zombienet.toml
+Creds: /tmp/zn-creds.cfg
+
+alice: is up within 60 seconds
+bob: is up within 60 seconds
+charlie: is up within 60 seconds
+
+alice: js-script ../js-scripts/evm-deploy-and-call.js return is 1 within 240 seconds
+alice: js-script ../js-scripts/evm-precompile-roundtrip.js return is 1 within 240 seconds

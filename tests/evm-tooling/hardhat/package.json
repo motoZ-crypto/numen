@@ -1,0 +1,19 @@
+{
+  "name": "crypto-node-hardhat-sample",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Hardhat 3 compatibility sample for crypto-node (Frontier EVM, ChainId 32026).",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat --network cryptoNode test mocha",
+    "deploy": "hardhat --network cryptoNode run scripts/deploy.js"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox-mocha-ethers": "^3.0.5",
+    "chai": "^6.0.0",
+    "ethers": "^6.14.0",
+    "hardhat": "^3.4.5",
+    "mocha": "^11.0.0"
+  }
+}

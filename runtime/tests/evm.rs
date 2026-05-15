@@ -227,3 +227,158 @@ fn evm_chain_id_constant_matches_genesis_value() {
 		assert_eq!(id, 0, "default storage value when no genesis preset is applied");
 	});
 }
+
+/// The six well-known Frontier dev EVM addresses (Alith, Baltathar, Charleth,
+/// Dorothy, Ethan, Faith). Their publicly documented private keys ship with
+/// every Frontier node template, so Hardhat / Foundry / MetaMask can use them
+/// directly against any preset that pre-funds them.
+const DEV_EVM_ADDRESSES: [&str; 6] = [
+	"0xf24ff3a9cf04c71dbc94d0b566f7a27b94566cac", // Alith
+	"0x3cd0a705a2dc65e5b1e1205896baa2be8a07c6e0", // Baltathar
+	"0x798d4ba9baf0064ec19eb4f0a1a45785ae9d6dfc", // Charleth
+	"0x773539d4ac0e786233d90a233654ccee26a613d9", // Dorothy
+	"0xff64d3f6efe2317ee2807d223a0bdc4c0c49dfdb", // Ethan
+	"0xc0f0f4ab324c46e55d02d0033343b4be8a55532d", // Faith
+];
+
+fn assert_preset_pre_funds_dev_evm_accounts(preset: &str) {
+	use solochain_template_runtime::genesis_config_presets::get_preset;
+	use sp_genesis_builder::PresetId;
+
+	let raw = get_preset(&PresetId::from(preset))
+		.unwrap_or_else(|| panic!("preset `{preset}` must exist"));
+	let json: serde_json::Value =
+		serde_json::from_slice(&raw).expect("preset emits valid JSON");
+
+	let accounts = json
+		.get("evm")
+		.and_then(|v| v.get("accounts"))
+		.and_then(|v| v.as_object())
+		.unwrap_or_else(|| panic!("`evm.accounts` missing in `{preset}` preset"));
+
+	assert_eq!(
+		accounts.len(),
+		DEV_EVM_ADDRESSES.len(),
+		"`{preset}` preset must pre-fund exactly {} dev EVM accounts",
+		DEV_EVM_ADDRESSES.len(),
+	);
+	for addr in DEV_EVM_ADDRESSES {
+		let entry = accounts
+			.get(addr)
+			.unwrap_or_else(|| panic!("dev EVM account {addr} not pre-funded by `{preset}`"));
+		let balance_str = entry
+			.get("balance")
+			.and_then(|v| v.as_str())
+			.expect("balance serialized as hex string");
+		let balance = sp_core::U256::from_str_radix(
+			balance_str.trim_start_matches("0x"),
+			16,
+		)
+		.expect("balance parses as U256");
+		assert_eq!(
+			balance,
+			sp_core::U256::from(1_000_000u128 * UNIT),
+			"unexpected starting balance for {addr} in `{preset}`",
+		);
+	}
+}
+
+#[test]
+fn dev_preset_pre_funds_frontier_dev_evm_accounts() {
+	assert_preset_pre_funds_dev_evm_accounts(sp_genesis_builder::DEV_RUNTIME_PRESET);
+}
+
+#[test]
+fn local_and_integration_presets_pre_fund_frontier_dev_evm_accounts() {
+	assert_preset_pre_funds_dev_evm_accounts(sp_genesis_builder::LOCAL_TESTNET_RUNTIME_PRESET);
+	assert_preset_pre_funds_dev_evm_accounts(
+		solochain_template_runtime::genesis_config_presets::INTEGRATION_RUNTIME_PRESET,
+	);
+}
+
+#[test]
+fn balances_erc20_precompile_withdraw_moves_funds_back_to_substrate() {
+	// `withdraw(bytes32 dest, uint256 amount)` on the balances-erc20
+	// precompile is the supported way to move native UNIT from an EVM
+	// caller back to a substrate `AccountId32` that has no `H160`
+	// preimage. Verify that a single end-to-end EVM call:
+	//   1) credits the destination substrate account by exactly `amount`,
+	//   2) debits the caller's mirror account by exactly `amount` plus
+	//      the gas burned by `pallet-evm` (so the total balance moved out
+	//      of the caller equals `amount + (issuance_before - issuance_after)`).
+	new_test_ext().execute_with(|| {
+		let caller = H160::from_low_u64_be(0xC1A1);
+		let caller_acc =
+			<Runtime as pallet_evm::Config>::AddressMapping::into_account_id(caller);
+
+		// A pure substrate destination — i.e. an `AccountId32` whose 32
+		// bytes do NOT correspond to any `HashedAddressMapping(H160)`
+		// preimage. Mirrors the production case of withdrawing to e.g.
+		// Alice or sudo.
+		let dest_bytes: [u8; 32] = [0x42; 32];
+		let dest_acc: AccountId = sp_runtime::AccountId32::from(dest_bytes);
+
+		let initial: u128 = 7_500 * UNIT;
+		let amount: u128 = 1_000 * UNIT;
+		Balances::set_balance(&caller_acc, initial);
+		assert_eq!(Balances::free_balance(&dest_acc), 0);
+
+		let issuance_before = Balances::total_issuance();
+
+		let precompile = H160::from_low_u64_be(0x0802);
+		let max_fee_per_gas = U256::from(2_000_000_000u64);
+
+		// Selector = keccak256("withdraw(bytes32,uint256)")[..4] = 0x040cf020.
+		let mut data = vec![0x04, 0x0c, 0xf0, 0x20];
+		data.extend_from_slice(&dest_bytes);
+		let amount_word = U256::from(amount).to_big_endian();
+		data.extend_from_slice(&amount_word);
+
+		let res = <Runtime as pallet_evm::Config>::Runner::call(
+			caller,
+			precompile,
+			data,
+			U256::zero(),
+			1_000_000,
+			Some(max_fee_per_gas),
+			None,
+			None,
+			Vec::new(),
+			Vec::new(),
+			true,
+			true,
+			None,
+			None,
+			None,
+			<Runtime as pallet_evm::Config>::config(),
+		)
+		.expect("withdraw call must dispatch without runtime error");
+		assert!(
+			res.exit_reason.is_succeed(),
+			"withdraw must succeed: {:?}",
+			res.exit_reason,
+		);
+		// Solidity returns `bool true`.
+		assert_eq!(U256::from_big_endian(&res.value), U256::one());
+
+		// Substrate destination credited by exactly `amount`.
+		assert_eq!(
+			Balances::free_balance(&dest_acc),
+			amount,
+			"destination substrate account must be credited by amount"
+		);
+		// Caller mirror debited by exactly `amount` plus whatever gas
+		// `pallet-evm` burned during the call. Equivalently: the total
+		// balance moved out of the caller equals `amount` (transferred
+		// to `dest_acc`) plus the issuance delta (burned as fees).
+		let caller_after = Balances::free_balance(&caller_acc);
+		let issuance_after = Balances::total_issuance();
+		let gas_burn = issuance_before - issuance_after;
+		assert_eq!(
+			initial - caller_after,
+			amount + gas_burn,
+			"caller mirror debit must equal amount + gas burn",
+		);
+	});
+}
+

@@ -23,7 +23,7 @@ SCENARIOS=(
     "scenarios/05-validator-offline-kick.zndsl"
     "scenarios/06-max-validators-capacity.zndsl"
     "scenarios/07-equivocation-placeholder.zndsl"
-    "scenarios/99-evm-placeholder.zndsl"
+    "scenarios/08-evm-tooling.zndsl"
 )
 
 fail=0

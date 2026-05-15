@@ -1,0 +1,16 @@
+{
+  "name": "crypto-node-evm-scripts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ethers.js & web3.js smoke scripts against the crypto-node Frontier RPC.",
+  "scripts": {
+    "transfer": "node transfer-ethers.js",
+    "query": "node query-web3.js",
+    "transfer:precompile": "node transfer-precompile.js",
+    "withdraw": "node withdraw-to-substrate.js"
+  },
+  "dependencies": {
+    "ethers": "^6.13.0",
+    "web3": "^4.10.0"
+  }
+}
