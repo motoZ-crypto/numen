@@ -36,6 +36,10 @@ async function main() {
   console.log(`tx hash: ${tx.hash}`);
   const receipt = await tx.wait();
   console.log(`status:  ${receipt.status === 1 ? "ok" : "failed"} (block ${receipt.blockNumber})`);
+  if (receipt.status !== 1) {
+    console.error("transaction failed");
+    process.exit(1);
+  }
 
   const afterFrom = await provider.getBalance(wallet.address);
   const afterTo = await provider.getBalance(BALTATHAR);
