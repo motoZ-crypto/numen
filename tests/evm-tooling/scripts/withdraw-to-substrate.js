@@ -35,6 +35,7 @@ const ALICE_PUBKEY =
   process.env.SUBSTRATE_DEST ||
   "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d";
 const AMOUNT = parseEther(process.env.AMOUNT || "2.5");
+const EXPECTED_CHAIN_ID = 32026n;
 
 const ABI = [
   "function balanceOf(address) view returns (uint256)",
@@ -46,6 +47,13 @@ const WITHDRAWAL_TOPIC = keccak256(toUtf8Bytes("Withdrawal(address,bytes32,uint2
 
 async function main() {
   const provider = new JsonRpcProvider(RPC_URL);
+  const network = await provider.getNetwork();
+  console.log(`chainId:         ${network.chainId}`);
+  if (network.chainId !== EXPECTED_CHAIN_ID) {
+      console.error(`unexpected chainId ${network.chainId}, want ${EXPECTED_CHAIN_ID}`);
+      process.exit(1);
+  }
+
   const wallet = new Wallet(ALITH_PK, provider);
   const erc20 = new Contract(PRECOMPILE, ABI, wallet);
 

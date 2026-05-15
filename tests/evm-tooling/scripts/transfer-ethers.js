@@ -12,11 +12,16 @@ const ALITH_PK =
   "0x5fb92d6e98884f76de468fa3f6278f8807c48bebc13595d45af5bdc4da702133";
 const BALTATHAR = "0x3Cd0A705a2DC65e5b1E1205896BaA2be8A07c6e0";
 const AMOUNT = parseEther(process.env.AMOUNT || "1.5");
+const EXPECTED_CHAIN_ID = 32026n;
 
 async function main() {
   const provider = new JsonRpcProvider(RPC_URL);
   const network = await provider.getNetwork();
   console.log(`chainId: ${network.chainId}`);
+  if (network.chainId !== EXPECTED_CHAIN_ID) {
+    console.error(`unexpected chainId ${network.chainId}, want ${EXPECTED_CHAIN_ID}`);
+    process.exit(1);
+  }
 
   const wallet = new Wallet(ALITH_PK, provider);
   console.log(`from:    ${wallet.address}`);
