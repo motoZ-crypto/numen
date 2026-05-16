@@ -218,6 +218,8 @@ pub mod pallet {
 		ValidatorKicked { who: T::AccountId, reason: KickReason },
         /// A validator's lock was released after expiry.
 		LockReleased { who: T::AccountId, amount: BalanceOf<T> },
+        /// A GRANDPA equivocation report was processed for an active validator.
+        EquivocationReported { who: T::AccountId },
     }
 
     /// Reason a validator was removed from the active set.
@@ -495,6 +497,7 @@ impl<T: Config> Pallet<T> {
             }
         });
 
+        Self::deposit_event(Event::EquivocationReported { who: who.clone() });
         Self::deposit_event(Event::ValidatorKicked {
             who: who.clone(),
             reason: KickReason::Equivocation,
