@@ -816,8 +816,21 @@ fn note_equivocation_kicks_active_validator() {
         let cooldown = RejoinCooldown::<Test>::get(ALICE).expect("cooldown recorded");
         assert_eq!(cooldown, System::block_number() + rejoin_cooldown);
 
-        System::assert_last_event(
-            Event::ValidatorKicked { who: ALICE, reason: KickReason::Equivocation }.into(),
+        // Both events fire in order: detection then kick.
+        let events: Vec<_> = System::events()
+            .into_iter()
+            .filter_map(|e| match e.event {
+                RuntimeEvent::Validator(ev @ Event::EquivocationReported { .. })
+                | RuntimeEvent::Validator(ev @ Event::ValidatorKicked { .. }) => Some(ev),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(
+            events,
+            vec![
+                Event::EquivocationReported { who: ALICE },
+                Event::ValidatorKicked { who: ALICE, reason: KickReason::Equivocation },
+            ],
         );
 
         let set = new_session(1).expect("set must shrink");
