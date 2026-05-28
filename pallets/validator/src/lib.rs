@@ -139,7 +139,7 @@ pub mod pallet {
 
     /// Validators currently selected for the active session. Updated at every session boundary.
     #[pallet::storage]
-	pub type ActiveValidators<T: Config> = StorageValue<_, BoundedVec<T::AccountId, T::MaxValidators>, ValueQuery>;
+	pub type DesiredValidators<T: Config> = StorageValue<_, BoundedVec<T::AccountId, T::MaxValidators>, ValueQuery>;
 
     /// Rejoin cooldown deadline per account (block number).
     #[pallet::storage]
@@ -160,7 +160,7 @@ pub mod pallet {
     /// active validator set at block 0. Each account is locked using
     /// `Config::LockAmount` and `Config::LockDuration` so that subsequent
     /// auto-renewal, exit, and kick logic operates on real lock records.
-    /// The accounts are pushed directly into `ActiveValidators` (not
+    /// The accounts are pushed directly into `DesiredValidators` (not
     /// `PendingValidators`) so that the very first session already has a
     /// non-empty authority set for `pallet-session` and downstream consumers
     /// such as `pallet-grandpa` and `pallet-im-online`.
@@ -204,7 +204,7 @@ pub mod pallet {
                     .try_push(who.clone())
                     .expect("Genesis validators exceed MaxValidators");
             }
-            ActiveValidators::<T>::put(active);
+            DesiredValidators::<T>::put(active);
         }
     }
 
@@ -340,7 +340,7 @@ pub mod pallet {
         pub fn lock(origin: OriginFor<T>) -> DispatchResult {
             let who = ensure_signed(origin)?;
 
-            let active = ActiveValidators::<T>::get();
+            let active = DesiredValidators::<T>::get();
             let pending = PendingValidators::<T>::get();
             ensure!(
                 !active.iter().any(|a| a == &who) && !pending.iter().any(|a| a == &who),
@@ -523,7 +523,7 @@ impl<T: Config> Pallet<T> {
         let threshold = T::OfflineThreshold::get();
         let cooldown = T::RejoinCooldownPeriod::get();
         let now = frame_system::Pallet::<T>::block_number();
-        let active = ActiveValidators::<T>::get();
+        let active = DesiredValidators::<T>::get();
 
         for who in active.iter() {
             
@@ -587,7 +587,7 @@ impl<T: Config> Pallet<T> {
 /// Drives `pallet-session` from the validator lifecycle storage.
 ///
 /// At every new session, the active set is recomputed as:
-/// * keep current `ActiveValidators` whose [`ValidatorLocks`] entry is still in
+/// * keep current `DesiredValidators` whose [`ValidatorLocks`] entry is still in
 ///   [`ValidatorStatus::Active`] (drops exited, kicked, or removed accounts);
 /// * drain [`PendingValidators`] and append new entrants whose lock is `Active`.
 ///
@@ -597,7 +597,7 @@ impl<T: Config> pallet_session::SessionManager<T::AccountId> for Pallet<T> {
     fn new_session(_new_index: u32) -> Option<alloc::vec::Vec<T::AccountId>> {
         Self::process_offline_counters();
 
-        let previous = ActiveValidators::<T>::get();
+        let previous = DesiredValidators::<T>::get();
 
         let is_active = |who: &T::AccountId| {
             ValidatorLocks::<T>::get(who)
@@ -637,7 +637,7 @@ impl<T: Config> pallet_session::SessionManager<T::AccountId> for Pallet<T> {
         // Always commit the recomputed set to our own storage so that
         // downstream checks (e.g. `lock`'s membership gate) see the truth,
         // even when we hide an empty set from `pallet-session` below.
-        ActiveValidators::<T>::put(&next);
+        DesiredValidators::<T>::put(&next);
 
         if next == previous {
             return None;
@@ -652,7 +652,7 @@ impl<T: Config> pallet_session::SessionManager<T::AccountId> for Pallet<T> {
         // validators have no lock anymore, so they will not actually vote;
         // GRANDPA finality stalls naturally while PoW keeps producing blocks
         // until a new validator locks and the next session boundary swaps
-        // the set in. Our own `ActiveValidators` storage was updated above
+        // the set in. Our own `DesiredValidators` storage was updated above
         // so callers querying membership see the real state.
         if next.is_empty() && !previous.is_empty() {
             return None;
@@ -664,7 +664,7 @@ impl<T: Config> pallet_session::SessionManager<T::AccountId> for Pallet<T> {
 
     fn start_session(_start_index: u32) {}
 
-    fn new_session_genesis(_new_index: u32) -> Option<alloc::vec::Vec<T::AccountId>> { Some(ActiveValidators::<T>::get().into_inner()) }
+    fn new_session_genesis(_new_index: u32) -> Option<alloc::vec::Vec<T::AccountId>> { Some(DesiredValidators::<T>::get().into_inner()) }
 }
 
 /// `pallet-session/historical` specialization. We do not maintain a separate
