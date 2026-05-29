@@ -305,8 +305,6 @@ pub mod pallet {
             for (who, amount) in to_release {
                 T::Currency::remove_lock(T::LockId::get(), &who);
                 ValidatorLocks::<T>::remove(&who);
-                OfflineSessionCount::<T>::remove(&who);
-                OfflineThisSession::<T>::remove(&who);
                 Self::deposit_event(Event::LockReleased { who, amount });
             }
 
