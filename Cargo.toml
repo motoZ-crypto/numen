@@ -14,9 +14,6 @@ members = [
     "pallets/reward",
     "pallets/validator",
     "precompiles/balances-erc20",
-    "precompiles/utils",
-    "precompiles/utils/macro",
-    "precompiles/utils/tests-external",
     "runtime",
 ]
 resolver = "2"
@@ -123,8 +120,7 @@ pallet-evm-precompile-modexp = { git = "https://github.com/polkadot-evm/frontier
 pallet-evm-precompile-sha3fips = { git = "https://github.com/polkadot-evm/frontier", branch = "stable2603", default-features = false }
 pallet-evm-precompile-simple = { git = "https://github.com/polkadot-evm/frontier", branch = "stable2603", default-features = false }
 pallet-evm-precompile-balances-erc20 = { path = "./precompiles/balances-erc20", default-features = false }
-precompile-utils = { path = "./precompiles/utils", default-features = false }
-precompile-utils-macro = { path = "./precompiles/utils/macro" }
+precompile-utils = { git = "https://github.com/polkadot-evm/frontier", branch = "stable2603", default-features = false }
 fp-evm = { git = "https://github.com/polkadot-evm/frontier", branch = "stable2603", default-features = false }
 fp-rpc = { git = "https://github.com/polkadot-evm/frontier", branch = "stable2603", default-features = false }
 fp-self-contained = { git = "https://github.com/polkadot-evm/frontier", branch = "stable2603", default-features = false, features = ["serde"] }

@@ -16,7 +16,7 @@ frame-system.workspace = true
 pallet-evm = { workspace = true, features = ["forbid-evm-reentrancy"] }
 pallet-timestamp.workspace = true
 fp-evm.workspace = true
-precompile-utils = { path = "../utils", default-features = false }
+precompile-utils = { workspace = true, default-features = false }
 sp-core = { features = ["serde"], workspace = true }
 sp-io.workspace = true
 sp-runtime.workspace = true
@@ -43,4 +43,4 @@ hex-literal = "1.1.0"
 libsecp256k1 = "0.7"
 pallet-balances = { workspace = true, default-features = true }
 pallet-timestamp = { workspace = true, default-features = true }
-precompile-utils = { path = "../utils", features = ["std", "testing"] }
+precompile-utils = { workspace = true, features = ["std", "testing"] }
