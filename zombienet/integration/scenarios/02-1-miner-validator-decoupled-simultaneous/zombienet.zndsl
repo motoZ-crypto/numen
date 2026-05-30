@@ -1,5 +1,0 @@
-Description: A validator that calls `validator.request_exit()` leaves the active set at the next session boundary but its newly mined PoW blocks are still finalized by the remaining validators.
-Network: ./zombienet.toml
-Creds: /tmp/zn-creds.cfg
-
-alice: js-script ./miner-validator-decoupled.js with "alice,dave,20" return is 1 within 1200 seconds

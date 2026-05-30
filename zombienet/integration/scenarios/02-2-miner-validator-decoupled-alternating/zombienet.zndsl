@@ -1,5 +1,0 @@
-Description: alice exits first and her PoW blocks still get finalized; only after that does dave lock in, and his PoW blocks then get finalized too. Verifies sequential validator rotation across session boundaries.
-Network: ./zombienet.toml
-Creds: /tmp/zn-creds.cfg
-
-alice: js-script ./miner-validator-decoupled.js with "alice,dave,20" return is 1 within 1800 seconds
