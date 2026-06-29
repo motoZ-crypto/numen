@@ -36,12 +36,17 @@ fn mesh_fingerprint(mesh: &Mesh) -> u64 {
     fnv1a(&buf)
 }
 
-/// (seed, subdivisions, mesh fingerprint).
-const MESH_GOLDEN: [(u64, u32, u64); 4] = [
+/// (seed, subdivisions, mesh fingerprint). Subdivision 4 is the on-chain mining
+/// resolution, frozen here beside the lighter level the seam tests exercise.
+const MESH_GOLDEN: [(u64, u32, u64); 8] = [
     (0x0, 3, 0xb192d0954cf2ad83),
     (0x1, 3, 0xf5c3672f25b02031),
     (0x2a, 3, 0xa4f06fe37253ce42),
     (0xdead_beef, 3, 0xa0b0d08c5deafe5c),
+    (0x0, 4, 0x8291dee3ea07baa0),
+    (0x1, 4, 0x56c2a257a4f6cb55),
+    (0x2a, 4, 0x0c78e63b5245717d),
+    (0xdead_beef, 4, 0x2547477c49d8ea72),
 ];
 
 #[test]

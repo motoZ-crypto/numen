@@ -53,6 +53,7 @@ jobs:
         run: |
           cargo test -p obj-asteroid --test determinism --locked
           cargo test -p obj-asteroid --test spectral --locked golden
+          cargo test -p poscan --test golden --locked
         timeout-minutes: 15
       - name: Add wasm target
         run: rustup target add wasm32-wasip1

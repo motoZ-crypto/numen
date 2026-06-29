@@ -99,6 +99,20 @@ const SCAN_GOLDEN: [(u64, u64); 4] = [
     (0xdead_beef, 0x37e165355dfcda75),
 ];
 
+/// On-chain mining resolution. The protocol scans a subdivision 4 body at this many
+/// samples, so the cross-environment leg must freeze that exact path, not only the
+/// lighter default the seam tests share.
+const MINING_SUBDIVISIONS: u32 = 4;
+const MINING_SAMPLES: usize = 4096;
+
+/// (seed, scan feature fingerprint) at the on-chain mining resolution.
+const SCAN_GOLDEN_MINING: [(u64, u64); 4] = [
+    (0x0, 0x6da1b2a0b181616c),
+    (0x1, 0xd3e887809042186c),
+    (0x2a, 0x88be365da70385d6),
+    (0xdead_beef, 0xbbb64605ce4c62cc),
+];
+
 /// (seed, registered identity hash). The coarse on-chain tag.
 const IDENTITY_GOLDEN: [(u64, &str); 4] = [
     (0x0, "1f8e42839dbd9894eca3c17c1140d85c6513eee5b14c4e7e3e766b29b9310f63"),
@@ -115,6 +129,16 @@ fn scan_golden_vectors() {
             .unwrap_or_else(|e| panic!("seed {seed:#x}: scan failed: {e}"));
         let got = scan_fingerprint(&f);
         assert_eq!(got, want, "seed={seed:#x}: scan features drifted, got 0x{got:016x}");
+    }
+}
+
+#[test]
+fn scan_golden_vectors_mining() {
+    for (seed, want) in SCAN_GOLDEN_MINING {
+        let f = scan(asteroid(seed, MINING_SUBDIVISIONS), MINING_SAMPLES)
+            .unwrap_or_else(|e| panic!("seed {seed:#x}: scan failed: {e}"));
+        let got = scan_fingerprint(&f);
+        assert_eq!(got, want, "seed={seed:#x}: mining-resolution scan drifted, got 0x{got:016x}");
     }
 }
 
@@ -139,6 +163,10 @@ fn regenerate_golden() {
     for (seed, _) in SCAN_GOLDEN {
         let f = scan(asteroid(seed, SUBDIVISIONS), p.target_samples).unwrap();
         println!("scan  ({seed:#x}, 0x{:016x}),", scan_fingerprint(&f));
+    }
+    for (seed, _) in SCAN_GOLDEN_MINING {
+        let f = scan(asteroid(seed, MINING_SUBDIVISIONS), MINING_SAMPLES).unwrap();
+        println!("mine  ({seed:#x}, 0x{:016x}),", scan_fingerprint(&f));
     }
     for (seed, _) in IDENTITY_GOLDEN {
         let (id, _) = register(asteroid(seed, SUBDIVISIONS), &p).unwrap();
