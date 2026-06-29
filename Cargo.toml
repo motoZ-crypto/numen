@@ -8,6 +8,7 @@ edition = "2024"
 [workspace]
 members = [
     "consensus/obj-asteroid",
+    "consensus/poscan",
     "consensus/sc-consensus-pow",
     "consensus/sha256pow",
     "node",
@@ -22,6 +23,8 @@ resolver = "2"
 [workspace.dependencies]
 solochain-template-runtime = { path = "./runtime", default-features = false }
 sha256pow = { path = "./consensus/sha256pow", default-features = false }
+poscan = { path = "./consensus/poscan", default-features = false }
+obj-asteroid = { path = "./consensus/obj-asteroid", default-features = false }
 pallet-difficulty = { path = "./pallets/difficulty", default-features = false }
 pallet-reward = { path = "./pallets/reward", default-features = false }
 pallet-validator = { path = "./pallets/validator", default-features = false }

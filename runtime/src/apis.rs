@@ -277,7 +277,7 @@ impl_runtime_apis! {
 
 	impl sha256pow::PowVerifyApi<Block> for Runtime {
 		fn verify_seal(pre_hash: sp_core::H256, seal: Vec<u8>, difficulty: U256) -> bool {
-			sha256pow::verify_seal(pre_hash, &seal, difficulty).unwrap_or(false)
+			poscan::verify_seal(pre_hash, &seal, difficulty).unwrap_or(false)
 		}
 	}
 

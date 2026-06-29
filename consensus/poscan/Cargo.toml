@@ -1,0 +1,25 @@
+[package]
+name = "poscan"
+description = "PoScan scanning PoW algorithm (asteroid generation plus spectral3d scan)."
+version = "0.1.0"
+license.workspace = true
+authors.workspace = true
+homepage.workspace = true
+repository.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+codec = { features = ["derive"], workspace = true }
+libm.workspace = true
+obj-asteroid.workspace = true
+sha2.workspace = true
+sp-core.workspace = true
+spectral3d.workspace = true
+
+[features]
+default = ["std"]
+std = [
+	"codec/std",
+	"sp-core/std",
+]
