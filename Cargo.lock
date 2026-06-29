@@ -8026,8 +8026,8 @@ dependencies = [
  "libm",
  "obj-asteroid",
  "parity-scale-codec",
+ "primitive-types",
  "sha2 0.11.0",
- "sp-core",
  "spectral3d",
 ]
 

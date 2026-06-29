@@ -17,7 +17,7 @@ use alloc::vec::Vec;
 
 use codec::{Decode, DecodeAll, Encode};
 use sha2::{Digest, Sha256};
-use sp_core::{H256, U256};
+use primitive_types::{H256, U256};
 use spectral3d::{N_FEATURES, QUANT_STEP};
 
 // ── Protocol parameters ─────────────────────────────────────────────

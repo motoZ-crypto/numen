@@ -63,4 +63,5 @@ jobs:
         run: |
           cargo test -p obj-asteroid --test determinism --target wasm32-wasip1 --locked
           cargo test -p obj-asteroid --test spectral --target wasm32-wasip1 --locked golden
+          cargo test -p poscan --test golden --target wasm32-wasip1 --locked
         timeout-minutes: 15

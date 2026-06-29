@@ -3,19 +3,16 @@
 //! hashes the buckets. One input must reproduce one `s` on every node or the chain
 //! forks. These freeze `s` bit-for-bit.
 //!
-//! The vectors run native on x86_64 and aarch64, so a CPU that reorders the float
-//! path turns them red. The wasm side of `s` rides transitively. `obj-asteroid`'s
-//! `spectral` golden freezes the scan features at this same resolution under
-//! wasmtime, and the steps left on top, a libm round and SHA256, carry no
-//! cross-target float variance. poscan cannot ride wasm32-wasip1 itself because
-//! sp-core drags a native secp256k1 C build that will not cross-compile, so the
-//! feature golden stands in for that leg.
+//! The vectors run native on x86_64 and aarch64 and under wasm32-wasip1 via
+//! wasmtime, so any target that reorders the float path turns them red. Running
+//! `s` itself under wasm freezes the consensus value on the wasm float path the
+//! runtime verifies on, with no transitive proxy.
 //!
 //! A red vector is a consensus break to investigate, never a stale value to
 //! refresh. `regenerate` is the only sanctioned way to move them.
 
 use poscan::Compute;
-use sp_core::{H256, U256};
+use primitive_types::{H256, U256};
 
 /// (pre_hash low u64, nonce, lowercase hex of `s`). The value that goes on chain.
 const WORK_GOLDEN: [(u64, u64, &str); 4] = [
