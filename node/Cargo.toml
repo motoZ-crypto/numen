@@ -94,6 +94,7 @@ sp-timestamp.workspace = true
 substrate-frame-rpc-system.default-features = true
 substrate-frame-rpc-system.workspace = true
 sha256pow.workspace = true
+poscan.workspace = true
 
 # Frontier (Ethereum compatibility) — node-side RPC stack.
 fc-api.workspace = true

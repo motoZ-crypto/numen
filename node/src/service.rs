@@ -446,11 +446,12 @@ pub fn new_full<
 
 				let mut nonce = U256::zero();
 				loop {
-					let compute = sha256pow::Compute { pre_hash, nonce };
-					let work = compute.work();
+					let compute = poscan::Compute { pre_hash, nonce };
 
-					if sha256pow::hash_meets_difficulty(&work, difficulty) {
-						let seal = compute.seal(difficulty);
+					if let Some(work) = compute.work()
+						&& poscan::hash_meets_difficulty(&work, difficulty)
+					{
+						let seal = poscan::Seal { nonce, work };
 						let encoded_seal = codec::Encode::encode(&seal);
 						futures::executor::block_on(mining_handle.submit(encoded_seal));
 						break;
@@ -458,8 +459,9 @@ pub fn new_full<
 
 					nonce = nonce.saturating_add(U256::one());
 
-					if nonce % 10_000 == U256::zero()
-						&& let Some(new_meta) = mining_handle.metadata()
+					// Each scan costs milliseconds, so checking for new work every
+					// attempt is cheap and drops stale jobs at once.
+					if let Some(new_meta) = mining_handle.metadata()
 						&& new_meta.best_hash != best_hash
 					{
 						break;

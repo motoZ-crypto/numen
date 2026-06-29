@@ -11182,6 +11182,7 @@ dependencies = [
  "pallet-transaction-payment",
  "pallet-transaction-payment-rpc",
  "parity-scale-codec",
+ "poscan",
  "sc-basic-authorship",
  "sc-cli",
  "sc-client-api",
