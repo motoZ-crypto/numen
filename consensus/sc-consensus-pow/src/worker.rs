@@ -107,14 +107,16 @@ where
 
 		let mut builds = self.build.lock();
 		if builds.back().map(|b| b.metadata.best_hash) != Some(best_hash) {
-			// The head moved on, so every build on the old head is dead.
 			builds.clear();
 		}
 		builds.push_back(value);
 		while builds.len() > MAX_LIVE_TASKS {
 			builds.pop_front();
 		}
+		let live = builds.len();
 		drop(builds);
+
+		debug!(target: LOG_TARGET, "New mining task on top of {}, {} live", best_hash, live);
 
 		self.increment_version();
 	}
