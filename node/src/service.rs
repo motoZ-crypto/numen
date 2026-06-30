@@ -176,14 +176,22 @@ where
 	}
 }
 
-/// Run the in-process scan loop on a background thread, deriving the seed then
-/// scanning, quantizing, hashing, and submitting the first nonce that beats the
-/// target. Drops the job the moment the best chain head changes, never burning
-/// cycles on a stale parent.
+struct BestSolution {
+	pre_hash: H256,
+	nonce: U256,
+	work: H256,
+	/// Highest difficulty this work satisfies, equal to U256::MAX divided by the work.
+	max_difficulty: U256,
+}
+
+/// Run the in-process scan loop on a background thread
 fn spawn_internal_miner<L>(mining_handle: PowMiningHandle<L>)
 where
 	L: sc_consensus::JustificationSyncLink<Block> + Send + Sync + 'static,
 {
+	let mut nonce = U256::zero();
+	let mut best: Option<BestSolution> = None;
+
 	std::thread::spawn(move || loop {
 		let metadata = match mining_handle.metadata() {
 			Some(m) => m,
@@ -195,30 +203,33 @@ where
 
 		let pre_hash = metadata.pre_hash;
 		let difficulty = metadata.difficulty;
-		let best_hash = metadata.best_hash;
 
-		let mut nonce = U256::zero();
-		loop {
-			let compute = poscan::Compute { pre_hash, nonce };
+		// A new head retires the saved work; it was bound to the prior pre_hash.
+		if best.as_ref().is_some_and(|b| b.pre_hash != pre_hash) {
+			best = None;
+		}
 
-			if let Some(work) = compute.work()
-				&& poscan::hash_meets_difficulty(&work, difficulty)
-			{
-				let seal = poscan::Seal { nonce, work };
-				let encoded_seal = codec::Encode::encode(&seal);
-				futures::executor::block_on(mining_handle.submit(pre_hash, encoded_seal));
-				break;
+		let compute = poscan::Compute { pre_hash, nonce };
+		nonce = nonce.overflowing_add(U256::one()).0;
+
+		if let Some(work) = compute.work() {
+			let num_hash = U256::from_big_endian(work.as_bytes());
+			let max_difficulty = U256::MAX.checked_div(num_hash).unwrap_or(U256::MAX);
+			if best.as_ref().is_none_or(|b| max_difficulty > b.max_difficulty) {
+				best = Some(BestSolution { pre_hash, nonce: compute.nonce, work, max_difficulty });
 			}
+		}
 
-			nonce = nonce.saturating_add(U256::one());
-
-			// Each scan costs milliseconds, so checking for new work every
-			// attempt is cheap and drops stale jobs at once.
-			if let Some(new_meta) = mining_handle.metadata()
-				&& new_meta.best_hash != best_hash
-			{
-				break;
-			}
+		// Difficulty drops over time. Submit once the live target falls within the
+		// reach of the strongest work held for this head.
+		if let Some(b) = &best
+			&& difficulty <= b.max_difficulty
+		{
+			log::debug!(target: "pow", "🎉 Found seal at nonce {} on top of {}, difficulty {}, pre_hash {}", b.nonce, metadata.best_hash, difficulty, pre_hash);
+			let seal = poscan::Seal { nonce: b.nonce, work: b.work };
+			let encoded_seal = codec::Encode::encode(&seal);
+			futures::executor::block_on(mining_handle.submit(pre_hash, encoded_seal));
+			best = None;
 		}
 	});
 }
