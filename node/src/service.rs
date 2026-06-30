@@ -11,7 +11,7 @@ use sc_telemetry::{Telemetry, TelemetryWorker};
 use sc_transaction_pool_api::OffchainTransactionPoolFactory;
 use solochain_template_runtime::{self, apis::RuntimeApi, opaque::Block, AccountId};
 use sp_core::{crypto::Ss58Codec, H256, U256};
-use std::{path::Path, sync::Arc, time::Duration};
+use std::{path::Path, sync::{Arc, Mutex}, time::Duration};
 
 use crate::mining_rpc::ExternalMiner;
 
@@ -186,7 +186,12 @@ struct BestSolution {
 }
 
 /// Run the in-process scan loop on a background thread.
-fn spawn_internal_miner<L>(mining_handle: PowMiningHandle<L>, start: U256, stride: U256)
+fn spawn_internal_miner<L>(
+	mining_handle: PowMiningHandle<L>,
+	start: U256,
+	stride: U256,
+	claimed: Arc<Mutex<Option<H256>>>,
+)
 where
 	L: sc_consensus::JustificationSyncLink<Block> + Send + Sync + 'static,
 {
@@ -226,10 +231,24 @@ where
 		if let Some(b) = &best
 			&& difficulty <= b.max_difficulty
 		{
-			log::debug!(target: "pow", "🎉 Found seal at nonce {} on top of {}, difficulty {}, pre_hash {}", b.nonce, metadata.best_hash, difficulty, pre_hash);
-			let seal = poscan::Seal { nonce: b.nonce, work: b.work };
-			let encoded_seal = codec::Encode::encode(&seal);
-			futures::executor::block_on(mining_handle.submit(pre_hash, encoded_seal));
+			// One submission per head. A sibling thread may already own this
+			// pre_hash, and a second import only drains the runtime instance pool.
+			let won = {
+				let mut claim = claimed.lock().unwrap();
+				let free = *claim != Some(pre_hash);
+				if free {
+					*claim = Some(pre_hash);
+				}
+				free
+			};
+
+			if won {
+				log::debug!(target: "pow", "🎉 Found seal at nonce {} on top of {}, difficulty {}, pre_hash {}", b.nonce, metadata.best_hash, difficulty, pre_hash);
+				let seal = poscan::Seal { nonce: b.nonce, work: b.work };
+				let encoded_seal = codec::Encode::encode(&seal);
+				futures::executor::block_on(mining_handle.submit(pre_hash, encoded_seal));
+			}
+
 			best = None;
 		}
 	});
@@ -388,11 +407,13 @@ pub fn new_full<
 				mining_worker,
 			);
 
+			let claimed: Arc<Mutex<Option<H256>>> = Arc::new(Mutex::new(None));
 			for i in 0..node_miner {
 				spawn_internal_miner(
 					mining_handle.clone(),
 					U256::from(i),
 					U256::from(node_miner),
+					claimed.clone(),
 				);
 			}
 
