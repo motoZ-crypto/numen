@@ -55,6 +55,7 @@ derive_more = { version = "2.1.1", default-features = false }
 hex = { version = "0.4.3", default-features = false, features = ["alloc"] }
 hex-literal = "1.1.0"
 similar-asserts = "2.0.0"
+criterion = { version = "0.8.2", default-features = false, features = ["cargo_bench_support"] }
 evm = { git = "https://github.com/rust-ethereum/evm.git", branch = "v0.x", default-features = false }
 frame-benchmarking-cli = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2603", default-features = false }
 frame-metadata-hash-extension = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2603", default-features = false }

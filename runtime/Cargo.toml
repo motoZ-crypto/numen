@@ -73,6 +73,14 @@ substrate-wasm-builder = { optional = true, workspace = true, default-features =
 
 [dev-dependencies]
 sp-io = { workspace = true, default-features = true }
+criterion.workspace = true
+sc-executor = { workspace = true, default-features = true }
+sp-crypto-hashing = { workspace = true, default-features = true }
+cumulus-primitives-proof-size-hostfunction = { workspace = true, default-features = true }
+
+[[bench]]
+name = "verify_wasm"
+harness = false
 
 [features]
 default = ["std"]

@@ -17,6 +17,13 @@ primitive-types.workspace = true
 sha2.workspace = true
 spectral3d.workspace = true
 
+[dev-dependencies]
+criterion.workspace = true
+
+[[bench]]
+name = "verify"
+harness = false
+
 [features]
 default = ["std"]
 std = [
