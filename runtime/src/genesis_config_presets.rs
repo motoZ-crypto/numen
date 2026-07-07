@@ -18,6 +18,11 @@ use sp_keyring::{Ed25519Keyring, Sr25519Keyring};
 /// the 1 billion UNIT total supply seeded into the substrate-side balances.
 const DEV_EVM_ACCOUNT_BALANCE: u128 = 1_000_000 * UNIT;
 
+/// Genesis treasury endowment. 600M NUMN seeded once into the on-chain treasury
+/// pot, which has no ongoing income. Dev presets keep their own account funding
+/// on top for testing.
+const TREASURY_GENESIS_ENDOWMENT: u128 = 600_000_000 * UNIT;
+
 /// Well-known Frontier dev ECDSA accounts pre-funded on the EVM side.
 ///
 /// These six addresses (Alith, Baltathar, Charleth, Dorothy, Ethan, Faith)
@@ -102,13 +107,16 @@ fn testnet_genesis_with_extra_keys(
 	for (account, grandpa, im_online) in extra_session_keys.into_iter() {
 		session_keys.push((account.clone(), account, SessionKeys { grandpa, im_online }));
 	}
+	let mut initial_balances: Vec<(AccountId, u128)> = endowed_accounts
+		.iter()
+		.cloned()
+		.map(|k| (k, balance_per_account))
+		.collect();
+	initial_balances.push((crate::configs::TreasuryAccount::get(), TREASURY_GENESIS_ENDOWMENT));
+
 	build_struct_json_patch!(RuntimeGenesisConfig {
 		balances: BalancesConfig {
-			balances: endowed_accounts
-				.iter()
-				.cloned()
-				.map(|k| (k, balance_per_account))
-				.collect::<Vec<_>>(),
+			balances: initial_balances,
 		},
 		sudo: SudoConfig { key: Some(root) },
 		difficulty: DifficultyConfig {

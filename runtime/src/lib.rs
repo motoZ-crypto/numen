@@ -249,6 +249,17 @@ mod runtime {
 
 	#[runtime::pallet_index(15)]
 	pub type BaseFee = pallet_base_fee;
+
+	// --- Treasury and bounties ---
+
+	#[runtime::pallet_index(16)]
+	pub type Treasury = pallet_treasury;
+
+	#[runtime::pallet_index(17)]
+	pub type Bounties = pallet_bounties;
+
+	#[runtime::pallet_index(18)]
+	pub type ChildBounties = pallet_child_bounties;
 }
 
 // pallet-im-online submits unsigned heartbeat extrinsics from offchain

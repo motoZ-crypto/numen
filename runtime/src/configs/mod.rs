@@ -1,26 +1,36 @@
 // Substrate and Polkadot dependencies
 use frame_support::{
 	derive_impl, parameter_types,
-	traits::{ConstU128, ConstU32, ConstU64, ConstU8, VariantCountOf},
+	traits::{
+		tokens::{PayFromAccount, UnityAssetBalanceConversion},
+		ConstU128, ConstU32, ConstU64, ConstU8, VariantCountOf,
+	},
 	weights::{
 		constants::{RocksDbWeight, WEIGHT_REF_TIME_PER_SECOND},
 		IdentityFee, Weight,
 	},
+	PalletId,
 };
-use frame_system::limits::{BlockLength, BlockWeights};
+use frame_system::{
+	limits::{BlockLength, BlockWeights},
+	EnsureRoot, EnsureWithSuccess,
+};
 use pallet_session::PeriodicSessions;
 use pallet_transaction_payment::{FungibleAdapter, Multiplier, TargetedFeeAdjustment};
-use sp_runtime::{traits::ConvertInto, FixedPointNumber, Perbill, Perquintill};
+use sp_runtime::{
+	traits::{AccountIdConversion, ConvertInto, IdentityLookup},
+	FixedPointNumber, Perbill, Permill, Perquintill,
+};
 use sp_version::RuntimeVersion;
 
 pub mod evm;
 
 // Local module imports
 use super::{
-	AccountId, Balance, Balances, Block, BlockNumber, Hash, Nonce, PalletInfo, Runtime,
-	RuntimeCall, RuntimeEvent, RuntimeFreezeReason, RuntimeHoldReason, RuntimeOrigin, RuntimeTask,
-	Session, SessionKeys, System, Validator, EXISTENTIAL_DEPOSIT, UNIT, VERSION,
-	DAYS, MINUTES
+	AccountId, Balance, Balances, Block, BlockNumber, Bounties, ChildBounties, Hash, Nonce,
+	PalletInfo, Runtime, RuntimeCall, RuntimeEvent, RuntimeFreezeReason, RuntimeHoldReason,
+	RuntimeOrigin, RuntimeTask, Session, SessionKeys, System, Treasury, Validator,
+	EXISTENTIAL_DEPOSIT, UNIT, VERSION, DAYS, MINUTES
 };
 
 pub(crate) const NORMAL_DISPATCH_RATIO: Perbill = Perbill::from_percent(75);
@@ -406,4 +416,80 @@ impl pallet_im_online::Config for Runtime {
 	type MaxKeys = ImOnlineMaxKeys;
 	type MaxPeerInHeartbeats = ImOnlineMaxPeerInHeartbeats;
 	type WeightInfo = ();
+}
+
+parameter_types! {
+	pub const TreasuryPalletId: PalletId = PalletId(*b"py/trsry");
+	pub const SpendPeriod: BlockNumber = DAYS;
+	/// Treasury holds the genesis endowment with no ongoing income, so idle
+	/// funds must not decay.
+	pub const Burn: Permill = Permill::zero();
+	pub const PayoutPeriod: BlockNumber = 30 * DAYS;
+	pub const MaxApprovals: u32 = 100;
+	pub const MaxBalance: Balance = Balance::MAX;
+	pub TreasuryAccount: AccountId = TreasuryPalletId::get().into_account_truncating();
+}
+
+impl pallet_treasury::Config for Runtime {
+	type PalletId = TreasuryPalletId;
+	type Currency = Balances;
+	type RejectOrigin = EnsureRoot<AccountId>;
+	type RuntimeEvent = RuntimeEvent;
+	type SpendPeriod = SpendPeriod;
+	type Burn = Burn;
+	type BurnDestination = ();
+	type SpendFunds = Bounties;
+	type WeightInfo = pallet_treasury::weights::SubstrateWeight<Runtime>;
+	type MaxApprovals = MaxApprovals;
+	type SpendOrigin = EnsureWithSuccess<EnsureRoot<AccountId>, AccountId, MaxBalance>;
+	type AssetKind = ();
+	type Beneficiary = AccountId;
+	type BeneficiaryLookup = IdentityLookup<AccountId>;
+	type Paymaster = PayFromAccount<Balances, TreasuryAccount>;
+	type BalanceConverter = UnityAssetBalanceConversion;
+	type PayoutPeriod = PayoutPeriod;
+	type BlockNumberProvider = System;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = ();
+}
+
+parameter_types! {
+	pub const BountyDepositBase: Balance = 10 * UNIT;
+	pub const BountyDepositPayoutDelay: BlockNumber = DAYS;
+	pub const BountyUpdatePeriod: BlockNumber = 90 * DAYS;
+	pub const CuratorDepositMultiplier: Permill = Permill::from_percent(50);
+	pub const CuratorDepositMin: Option<Balance> = Some(10 * UNIT);
+	pub const CuratorDepositMax: Option<Balance> = Some(1_000 * UNIT);
+	pub const BountyValueMinimum: Balance = UNIT;
+	pub const DataDepositPerByte: Balance = UNIT / 100;
+	pub const MaximumReasonLength: u32 = 300;
+}
+
+impl pallet_bounties::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type BountyDepositBase = BountyDepositBase;
+	type BountyDepositPayoutDelay = BountyDepositPayoutDelay;
+	type BountyUpdatePeriod = BountyUpdatePeriod;
+	type CuratorDepositMultiplier = CuratorDepositMultiplier;
+	type CuratorDepositMin = CuratorDepositMin;
+	type CuratorDepositMax = CuratorDepositMax;
+	type BountyValueMinimum = BountyValueMinimum;
+	type DataDepositPerByte = DataDepositPerByte;
+	type MaximumReasonLength = MaximumReasonLength;
+	type WeightInfo = pallet_bounties::weights::SubstrateWeight<Runtime>;
+	type ChildBountyManager = ChildBounties;
+	type OnSlash = Treasury;
+	type TransferAllAssets = ();
+}
+
+parameter_types! {
+	pub const ChildBountyValueMinimum: Balance = UNIT;
+	pub const MaxActiveChildBountyCount: u32 = 1000;
+}
+
+impl pallet_child_bounties::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type MaxActiveChildBountyCount = MaxActiveChildBountyCount;
+	type ChildBountyValueMinimum = ChildBountyValueMinimum;
+	type WeightInfo = pallet_child_bounties::weights::SubstrateWeight<Runtime>;
 }
