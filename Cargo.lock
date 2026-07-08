@@ -9848,6 +9848,7 @@ dependencies = [
  "sp-runtime",
  "substrate-prometheus-endpoint",
  "thiserror 2.0.18",
+ "tokio",
 ]
 
 [[package]]
@@ -11411,7 +11412,6 @@ dependencies = [
  "frame-metadata-hash-extension",
  "frame-system",
  "futures",
- "futures-timer",
  "jsonrpsee",
  "log",
  "pallet-ethereum",

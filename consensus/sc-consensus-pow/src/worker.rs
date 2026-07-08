@@ -22,6 +22,7 @@ use std::{
 	},
 	time::Duration,
 };
+use tokio::sync::watch;
 
 use crate::{PowAlgorithm, Seal, LOG_TARGET, POW_ENGINE_ID};
 
@@ -63,11 +64,9 @@ pub struct MiningHandle<
 	L: sc_consensus::JustificationSyncLink<Block>,
 > {
 	version: Arc<AtomicUsize>,
+	task_changed: watch::Sender<u64>,
 	algorithm: Arc<Algorithm>,
 	justification_sync_link: Arc<L>,
-	/// Builds for the current head, oldest first. A fresh task stacks on each
-	/// tick so a miner may solve any one still tied to the head; the head moving
-	/// on clears the lot. Bounded by `MAX_LIVE_TASKS`.
 	build: Arc<Mutex<VecDeque<MiningBuild<Block, Algorithm>>>>,
 	block_import: Arc<Mutex<BoxBlockImport<Block>>>,
 }
@@ -80,7 +79,8 @@ where
 	L: sc_consensus::JustificationSyncLink<Block>,
 {
 	fn increment_version(&self) {
-		self.version.fetch_add(1, Ordering::SeqCst);
+		let version = self.version.fetch_add(1, Ordering::SeqCst) + 1;
+		let _ = self.task_changed.send(version as u64);
 	}
 
 	pub(crate) fn new(
@@ -90,6 +90,7 @@ where
 	) -> Self {
 		Self {
 			version: Arc::new(AtomicUsize::new(0)),
+			task_changed: watch::channel(0).0,
 			algorithm: Arc::new(algorithm),
 			justification_sync_link: Arc::new(justification_sync_link),
 			build: Arc::new(Mutex::new(VecDeque::new())),
@@ -127,6 +128,12 @@ where
 	/// it can be certain that `best_hash` and `metadata` were not changed.
 	pub fn version(&self) -> Version {
 		Version(self.version.load(Ordering::SeqCst))
+	}
+
+	/// Subscribe to task changes so a caller can await the next task instead of
+	/// polling.
+	pub fn subscribe(&self) -> watch::Receiver<u64> {
+		self.task_changed.subscribe()
 	}
 
 	/// Get the current best hash. `None` if the worker has just started or the client is doing
@@ -239,6 +246,7 @@ where
 	fn clone(&self) -> Self {
 		Self {
 			version: self.version.clone(),
+			task_changed: self.task_changed.clone(),
 			algorithm: self.algorithm.clone(),
 			justification_sync_link: self.justification_sync_link.clone(),
 			build: self.build.clone(),

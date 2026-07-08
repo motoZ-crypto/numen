@@ -36,3 +36,4 @@ sp-inherents.workspace = true
 sp-runtime.default-features = true
 sp-runtime.workspace = true
 thiserror.workspace = true
+tokio = { features = ["sync"], workspace = true }
