@@ -128,13 +128,18 @@ impl pallet_balances::Config for Runtime {
 }
 
 parameter_types! {
-	/// Block reward: 50 UNIT per block to the miner.
-	pub const BlockReward: Balance = 50 * super::UNIT;
+	/// Initial block reward: 16 UNIT per block, halving every `HalvingInterval`.
+	pub const InitialReward: Balance = 16 * super::UNIT;
+	/// Blocks between reward halvings (~4 years at a 10s block time). The
+	/// geometric series caps total mined issuance at `2 * InitialReward *
+	/// HalvingInterval` = 400,000,000 UNIT.
+	pub const HalvingInterval: BlockNumber = 12_500_000;
 }
 
 impl pallet_reward::Config for Runtime {
 	type Currency = Balances;
-	type BlockReward = BlockReward;
+	type InitialReward = InitialReward;
+	type HalvingInterval = HalvingInterval;
 }
 
 parameter_types! {

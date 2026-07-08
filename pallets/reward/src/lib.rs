@@ -1,7 +1,10 @@
 //! Block reward pallet.
 //!
 //! Reads the PoW pre-runtime digest to identify the block author (miner),
-//! then mints a configurable reward to their account on each block.
+//! then mints a halving reward to their account on each block. The reward
+//! starts at `InitialReward` and halves every `HalvingInterval` blocks, so
+//! total mined issuance is the geometric sum `2 * InitialReward *
+//! HalvingInterval`, capping emission without any on-chain supply check.
 //!
 //! Orphan and uncle blocks receive no reward because their state changes
 //! are never applied to the canonical chain.
@@ -21,6 +24,7 @@ pub mod pallet {
     use frame_support::{pallet_prelude::*, traits::Currency};
     use frame_system::pallet_prelude::*;
     use sp_consensus_pow::POW_ENGINE_ID;
+    use sp_runtime::traits::{One, Zero};
 
     type BalanceOf<T> =
         <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
@@ -30,9 +34,13 @@ pub mod pallet {
         /// The currency used to mint block rewards.
         type Currency: Currency<Self::AccountId>;
 
-        /// Fixed reward per block (in smallest units).
+        /// Reward for the first halving period (in smallest units).
         #[pallet::constant]
-        type BlockReward: Get<BalanceOf<Self>>;
+        type InitialReward: Get<BalanceOf<Self>>;
+
+        /// Block count between reward halvings.
+        #[pallet::constant]
+        type HalvingInterval: Get<BlockNumberFor<Self>>;
     }
 
     #[pallet::pallet]
@@ -40,9 +48,9 @@ pub mod pallet {
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-        fn on_finalize(_n: BlockNumberFor<T>) {
+        fn on_finalize(n: BlockNumberFor<T>) {
             if let Some(author) = Self::find_author() {
-                let reward = T::BlockReward::get();
+                let reward = Self::block_reward(n);
                 if !reward.is_zero() {
                     let _ = T::Currency::deposit_creating(&author, reward);
                 }
@@ -51,6 +59,20 @@ pub mod pallet {
     }
 
     impl<T: Config> Pallet<T> {
+        /// Reward at height `n`: `InitialReward` halved once per elapsed
+        /// `HalvingInterval`. Integer division truncates each halving and the
+        /// reward reaches zero once fully shifted out, ending emission.
+        fn block_reward(n: BlockNumberFor<T>) -> BalanceOf<T> {
+            let mut halvings = n / T::HalvingInterval::get();
+            let mut reward = T::InitialReward::get();
+            let two = BalanceOf::<T>::from(2u32);
+            while !halvings.is_zero() && !reward.is_zero() {
+                reward = reward / two;
+                halvings = halvings - One::one();
+            }
+            reward
+        }
+
         /// Extract the block author from the PoW pre-runtime digest.
         ///
         /// The miner encodes their `AccountId` as the payload of a

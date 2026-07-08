@@ -2,7 +2,7 @@ use crate as pallet_reward;
 use codec::Encode;
 use frame_support::{
     derive_impl,
-    traits::{ConstU128, Hooks},
+    traits::{ConstU128, ConstU64, Hooks},
 };
 use sp_consensus_pow::POW_ENGINE_ID;
 use sp_runtime::{traits::IdentityLookup, AccountId32, BuildStorage, DigestItem};
@@ -52,7 +52,8 @@ impl pallet_balances::Config for Test {
 
 impl pallet_reward::Config for Test {
     type Currency = Balances;
-    type BlockReward = ConstU128<1>;
+    type InitialReward = ConstU128<1024>;
+    type HalvingInterval = ConstU64<10>;
 }
 
 pub fn new_test_ext() -> sp_io::TestExternalities {

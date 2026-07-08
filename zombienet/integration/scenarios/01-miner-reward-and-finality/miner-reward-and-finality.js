@@ -137,7 +137,9 @@ async function run(_zombie, networkInfo, args) {
         await assertAllFinalized(apis, finH);
         await assertFinalizedConsistency(apis, finH);
 
-        const reward = alice.consts.blockReward.blockReward.toBigInt();
+        // Reward halves every HalvingInterval blocks; integration runs stay far
+        // below the first boundary, so every block pays the initial reward.
+        const reward = alice.consts.blockReward.initialReward.toBigInt();
         console.log("📜", `  reward/block = ${reward}`);
 
         const { watch, byHex } = buildWatch(names, keyring);
