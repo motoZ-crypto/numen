@@ -42,7 +42,7 @@ parameter_types! {
 	pub const BlockHashCount: BlockNumber = 2400;
 	pub const Version: RuntimeVersion = VERSION;
 
-	pub const TargetBlockTime: u64 = 20;
+	pub const TargetBlockTime: u64 = 10;
 
 	/// We allow for 2 seconds of compute with a 6 second average block time.
 	pub RuntimeBlockWeights: BlockWeights = BlockWeights::with_sensible_defaults(
@@ -104,7 +104,7 @@ impl frame_system::Config for Runtime {
 impl pallet_timestamp::Config for Runtime {
 	type Moment = u64;
 	type OnTimestampSet = ();
-	type MinimumPeriod = ConstU64<10_000>;
+	type MinimumPeriod = ConstU64<5_000>;
 	type WeightInfo = ();
 }
 
