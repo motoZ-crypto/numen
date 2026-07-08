@@ -81,10 +81,10 @@ const fn percent(x: i32) -> FixedI64 {
 	FixedI64::from_rational(x as u128, 100)
 }
 
-const APP_ROOT: Curve = Curve::make_reciprocal(4, 28, percent(80), percent(50), percent(100));
-const SUP_ROOT: Curve = Curve::make_linear(28, 28, percent(0), percent(50));
-const APP_SPENDER: Curve = Curve::make_linear(17, 28, percent(50), percent(100));
-const SUP_SPENDER: Curve = Curve::make_reciprocal(12, 28, percent(1), percent(0), percent(50));
+const APP_ROOT: Curve = Curve::make_reciprocal(2, 14, percent(80), percent(50), percent(100));
+const SUP_ROOT: Curve = Curve::make_linear(14, 14, percent(0), percent(50));
+const APP_SPENDER: Curve = Curve::make_linear(14, 14, percent(50), percent(100));
+const SUP_SPENDER: Curve = Curve::make_linear(14, 14, percent(0), percent(50));
 
 const TRACKS_DATA: [Track<u16, Balance, BlockNumber>; 2] = [
 	Track {
