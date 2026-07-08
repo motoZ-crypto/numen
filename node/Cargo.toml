@@ -24,7 +24,6 @@ frame-metadata-hash-extension.workspace = true
 frame-system.default-features = true
 frame-system.workspace = true
 futures = { features = ["thread-pool"], workspace = true }
-futures-timer.workspace = true
 jsonrpsee = { features = ["server", "macros"], workspace = true }
 tokio = { features = ["rt"], workspace = true }
 log.workspace = true

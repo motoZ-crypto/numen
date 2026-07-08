@@ -175,6 +175,10 @@ where
 	fn submit_seal(&self, pre_hash: H256, seal: Vec<u8>) -> bool {
 		futures::executor::block_on(self.submit(pre_hash, seal))
 	}
+
+	fn task_changes(&self) -> tokio::sync::watch::Receiver<u64> {
+		self.subscribe()
+	}
 }
 
 struct BestSolution {
@@ -385,6 +389,8 @@ pub fn new_full<
 			);
 
 			log::info!(target: "pow", "👛 Miner: {}", miner);
+			log::info!(target: "pow", "🧵 Mining thread(s): {}", node_miner);
+
 			let pre_runtime = codec::Encode::encode(&miner);
 
 			let (mining_handle, mining_worker) = sc_consensus_pow::start_mining_worker(

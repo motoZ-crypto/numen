@@ -7,9 +7,8 @@
 //! pre-runtime digest the node builds, so an external miner cannot redirect the
 //! reward.
 
-use std::{sync::Arc, time::Duration};
+use std::sync::Arc;
 
-use futures_timer::Delay;
 use jsonrpsee::{
 	core::{
 		async_trait,
@@ -21,10 +20,7 @@ use jsonrpsee::{
 };
 use serde::{Deserialize, Serialize};
 use sp_core::{Bytes, H256, U256};
-
-/// Push a fresh task to subscribers on this cadence, matching the new-task
-/// generation interval.
-const TASK_INTERVAL: Duration = Duration::from_secs(1);
+use tokio::sync::watch;
 
 /// No mining task exists yet (worker just started or syncing).
 const NO_TASK: i32 = 9001;
@@ -47,6 +43,10 @@ pub trait ExternalMiner: Send + Sync {
 	/// new or old; a `pre_hash` the head has moved past is gone, so it returns
 	/// `false`.
 	fn submit_seal(&self, pre_hash: H256, seal: Vec<u8>) -> bool;
+
+	/// A receiver that wakes on every task change, letting the subscription await
+	/// the next task instead of polling.
+	fn task_changes(&self) -> watch::Receiver<u64>;
 }
 
 /// Everything an external miner needs to compute the work for one task.
@@ -117,16 +117,15 @@ impl MiningApiServer for Mining {
 
 	async fn subscribe_task(&self, pending: PendingSubscriptionSink) -> SubscriptionResult {
 		let sink = pending.accept().await?;
-		let mut first = true;
+		// Subscribe before the first read so a task built in the gap still wakes us.
+		let mut changes = self.handle.task_changes();
 		loop {
-			if !first {
-				Delay::new(TASK_INTERVAL).await;
-			}
-			first = false;
-
 			if let Some(task) = task_of(&*self.handle, &self.miner, &self.protocol)
 				&& sink.send(SubscriptionMessage::from_json(&task)?).await.is_err()
 			{
+				break;
+			}
+			if changes.changed().await.is_err() {
 				break;
 			}
 		}
@@ -159,11 +158,17 @@ mod tests {
 		latest: Option<(H256, U256)>,
 		live: Vec<H256>,
 		submitted: Mutex<Vec<(H256, Vec<u8>)>>,
+		changes: watch::Sender<u64>,
 	}
 
 	impl MockMiner {
 		fn new(latest: Option<(H256, U256)>, live: Vec<H256>) -> Arc<Self> {
-			Arc::new(Self { latest, live, submitted: Mutex::new(Vec::new()) })
+			Arc::new(Self {
+				latest,
+				live,
+				submitted: Mutex::new(Vec::new()),
+				changes: watch::channel(0).0,
+			})
 		}
 	}
 
@@ -175,6 +180,10 @@ mod tests {
 		fn submit_seal(&self, pre_hash: H256, seal: Vec<u8>) -> bool {
 			self.submitted.lock().unwrap().push((pre_hash, seal));
 			self.live.contains(&pre_hash)
+		}
+
+		fn task_changes(&self) -> watch::Receiver<u64> {
+			self.changes.subscribe()
 		}
 	}
 
