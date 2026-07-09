@@ -190,6 +190,25 @@ impl pallet_sudo::Config for Runtime {
 	type WeightInfo = pallet_sudo::weights::SubstrateWeight<Runtime>;
 }
 
+parameter_types! {
+	/// Deposits track the storage footprint of a pending multisig. Each
+	/// signatory adds 32 bytes, priced at the same 0.01 NUMN per byte as
+	/// bounty and preimage data.
+	pub const MultisigDepositBase: Balance = 5 * UNIT;
+	pub const MultisigDepositFactor: Balance = 32 * UNIT / 100;
+}
+
+impl pallet_multisig::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeCall = RuntimeCall;
+	type Currency = Balances;
+	type DepositBase = MultisigDepositBase;
+	type DepositFactor = MultisigDepositFactor;
+	type MaxSignatories = ConstU32<100>;
+	type WeightInfo = pallet_multisig::weights::SubstrateWeight<Runtime>;
+	type BlockNumberProvider = System;
+}
+
 impl pallet_difficulty::Config for Runtime {
 	type TargetBlockTime = TargetBlockTime;
 	type Halflife = DifficultyHalflife;

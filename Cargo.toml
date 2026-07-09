@@ -108,6 +108,7 @@ pallet-child-bounties = { git = "https://github.com/paritytech/polkadot-sdk", br
 pallet-conviction-voting = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2603", default-features = false }
 pallet-grandpa = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2603", default-features = false }
 pallet-im-online = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2603", default-features = false }
+pallet-multisig = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2603", default-features = false }
 pallet-preimage = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2603", default-features = false }
 pallet-referenda = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2603", default-features = false }
 pallet-scheduler = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2603", default-features = false }
