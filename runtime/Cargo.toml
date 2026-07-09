@@ -30,6 +30,7 @@ pallet-conviction-voting.workspace = true
 pallet-difficulty.workspace = true
 pallet-grandpa.workspace = true
 pallet-im-online.workspace = true
+pallet-multisig.workspace = true
 pallet-preimage.workspace = true
 pallet-referenda.workspace = true
 pallet-scheduler.workspace = true
@@ -110,6 +111,7 @@ std = [
 	"pallet-difficulty/std",
 	"pallet-grandpa/std",
 	"pallet-im-online/std",
+	"pallet-multisig/std",
 	"pallet-preimage/std",
 	"pallet-referenda/std",
 	"pallet-scheduler/std",
@@ -171,6 +173,7 @@ runtime-benchmarks = [
 	"pallet-difficulty/runtime-benchmarks",
 	"pallet-grandpa/runtime-benchmarks",
 	"pallet-im-online/runtime-benchmarks",
+	"pallet-multisig/runtime-benchmarks",
 	"pallet-preimage/runtime-benchmarks",
 	"pallet-referenda/runtime-benchmarks",
 	"pallet-scheduler/runtime-benchmarks",
@@ -199,6 +202,7 @@ try-runtime = [
 	"pallet-difficulty/try-runtime",
 	"pallet-grandpa/try-runtime",
 	"pallet-im-online/try-runtime",
+	"pallet-multisig/try-runtime",
 	"pallet-preimage/try-runtime",
 	"pallet-referenda/try-runtime",
 	"pallet-scheduler/try-runtime",

@@ -7287,6 +7287,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-multisig"
+version = "46.0.0"
+source = "git+https://github.com/paritytech/polkadot-sdk?branch=stable2603#9e54ba9c63b81b630ded4bc798f3b9c406060545"
+dependencies = [
+ "log",
+ "parity-scale-codec",
+ "polkadot-sdk-frame",
+ "scale-info",
+]
+
+[[package]]
 name = "pallet-preimage"
 version = "46.0.0"
 source = "git+https://github.com/paritytech/polkadot-sdk?branch=stable2603#9e54ba9c63b81b630ded4bc798f3b9c406060545"
@@ -11491,6 +11502,7 @@ dependencies = [
  "pallet-evm-precompile-simple",
  "pallet-grandpa",
  "pallet-im-online",
+ "pallet-multisig",
  "pallet-preimage",
  "pallet-referenda",
  "pallet-reward",

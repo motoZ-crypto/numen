@@ -12,4 +12,5 @@ frame_benchmarking::define_benchmarks!(
 	[pallet_scheduler, Scheduler]
 	[pallet_conviction_voting, ConvictionVoting]
 	[pallet_referenda, Referenda]
+	[pallet_multisig, Multisig]
 );

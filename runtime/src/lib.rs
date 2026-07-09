@@ -278,6 +278,9 @@ mod runtime {
 
 	#[runtime::pallet_index(23)]
 	pub type Origins = configs::governance::pallet_custom_origins;
+
+	#[runtime::pallet_index(24)]
+	pub type Multisig = pallet_multisig;
 }
 
 // pallet-im-online submits unsigned heartbeat extrinsics from offchain
