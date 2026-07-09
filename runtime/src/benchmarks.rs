@@ -13,4 +13,6 @@ frame_benchmarking::define_benchmarks!(
 	[pallet_conviction_voting, ConvictionVoting]
 	[pallet_referenda, Referenda]
 	[pallet_multisig, Multisig]
+	[pallet_utility, Utility]
+	[pallet_proxy, Proxy]
 );

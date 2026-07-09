@@ -281,6 +281,12 @@ mod runtime {
 
 	#[runtime::pallet_index(24)]
 	pub type Multisig = pallet_multisig;
+
+	#[runtime::pallet_index(25)]
+	pub type Utility = pallet_utility;
+
+	#[runtime::pallet_index(26)]
+	pub type Proxy = pallet_proxy;
 }
 
 // pallet-im-online submits unsigned heartbeat extrinsics from offchain

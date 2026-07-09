@@ -1,11 +1,12 @@
 // Substrate and Polkadot dependencies
+use codec::{Decode, DecodeWithMemTracking, Encode, MaxEncodedLen};
 use frame_support::{
 	derive_impl, parameter_types,
 	traits::{
 		fungible::{Balanced, Credit, HoldConsideration},
 		tokens::{PayFromAccount, UnityAssetBalanceConversion},
-		ConstU128, ConstU32, ConstU64, ConstU8, EqualPrivilegeOnly, LinearStoragePrice,
-		OnUnbalanced, VariantCountOf,
+		ConstU128, ConstU32, ConstU64, ConstU8, EqualPrivilegeOnly, InstanceFilter,
+		LinearStoragePrice, OnUnbalanced, VariantCountOf,
 	},
 	weights::{
 		constants::{RocksDbWeight, WEIGHT_REF_TIME_PER_SECOND},
@@ -19,8 +20,9 @@ use frame_system::{
 };
 use pallet_session::PeriodicSessions;
 use pallet_transaction_payment::{FungibleAdapter, Multiplier, TargetedFeeAdjustment};
+use scale_info::TypeInfo;
 use sp_runtime::{
-	traits::{AccountIdConversion, ConvertInto, IdentityLookup},
+	traits::{AccountIdConversion, BlakeTwo256, ConvertInto, IdentityLookup},
 	FixedPointNumber, Perbill, Permill, Perquintill,
 };
 use sp_version::RuntimeVersion;
@@ -206,6 +208,100 @@ impl pallet_multisig::Config for Runtime {
 	type DepositFactor = MultisigDepositFactor;
 	type MaxSignatories = ConstU32<100>;
 	type WeightInfo = pallet_multisig::weights::SubstrateWeight<Runtime>;
+	type BlockNumberProvider = System;
+}
+
+impl pallet_utility::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeCall = RuntimeCall;
+	type PalletsOrigin = OriginCaller;
+	type WeightInfo = pallet_utility::weights::SubstrateWeight<Runtime>;
+}
+
+parameter_types! {
+	/// Deposits track the storage footprint of proxy state, priced at the
+	/// same 0.01 NUMN per byte as multisig and bounty data. A proxy entry
+	/// holds 37 bytes and an announcement holds 68 bytes.
+	pub const ProxyDepositBase: Balance = 5 * UNIT;
+	pub const ProxyDepositFactor: Balance = 37 * UNIT / 100;
+	pub const AnnouncementDepositBase: Balance = 5 * UNIT;
+	pub const AnnouncementDepositFactor: Balance = 68 * UNIT / 100;
+}
+
+/// Call classes a proxy delegation may be restricted to.
+#[derive(
+	Copy,
+	Clone,
+	Eq,
+	PartialEq,
+	Ord,
+	PartialOrd,
+	Encode,
+	Decode,
+	DecodeWithMemTracking,
+	Debug,
+	MaxEncodedLen,
+	TypeInfo,
+)]
+pub enum ProxyType {
+	Any,
+	NonTransfer,
+	Governance,
+}
+
+impl Default for ProxyType {
+	fn default() -> Self {
+		Self::Any
+	}
+}
+
+impl InstanceFilter<RuntimeCall> for ProxyType {
+	fn filter(&self, c: &RuntimeCall) -> bool {
+		match self {
+			ProxyType::Any => true,
+			// EVM entry points move native balance as well, so they are
+			// fenced off together with direct transfers. Nested calls in a
+			// utility batch inherit this filter through the origin.
+			ProxyType::NonTransfer => !matches!(
+				c,
+				RuntimeCall::Balances(..) | RuntimeCall::EVM(..) | RuntimeCall::Ethereum(..)
+			),
+			ProxyType::Governance => matches!(
+				c,
+				RuntimeCall::Treasury(..)
+					| RuntimeCall::Bounties(..)
+					| RuntimeCall::ChildBounties(..)
+					| RuntimeCall::ConvictionVoting(..)
+					| RuntimeCall::Referenda(..)
+					| RuntimeCall::Utility(..)
+			),
+		}
+	}
+
+	fn is_superset(&self, o: &Self) -> bool {
+		match (self, o) {
+			(x, y) if x == y => true,
+			(ProxyType::Any, _) => true,
+			(_, ProxyType::Any) => false,
+			(ProxyType::NonTransfer, _) => true,
+			_ => false,
+		}
+	}
+}
+
+impl pallet_proxy::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeCall = RuntimeCall;
+	type Currency = Balances;
+	type ProxyType = ProxyType;
+	type ProxyDepositBase = ProxyDepositBase;
+	type ProxyDepositFactor = ProxyDepositFactor;
+	type MaxProxies = ConstU32<32>;
+	type WeightInfo = pallet_proxy::weights::SubstrateWeight<Runtime>;
+	type MaxPending = ConstU32<32>;
+	type CallHasher = BlakeTwo256;
+	type AnnouncementDepositBase = AnnouncementDepositBase;
+	type AnnouncementDepositFactor = AnnouncementDepositFactor;
 	type BlockNumberProvider = System;
 }
 

@@ -7314,6 +7314,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-proxy"
+version = "46.0.0"
+source = "git+https://github.com/paritytech/polkadot-sdk?branch=stable2603#9e54ba9c63b81b630ded4bc798f3b9c406060545"
+dependencies = [
+ "parity-scale-codec",
+ "polkadot-sdk-frame",
+ "scale-info",
+]
+
+[[package]]
 name = "pallet-referenda"
 version = "46.0.0"
 source = "git+https://github.com/paritytech/polkadot-sdk?branch=stable2603#9e54ba9c63b81b630ded4bc798f3b9c406060545"
@@ -7516,6 +7526,21 @@ dependencies = [
  "scale-info",
  "serde",
  "sp-core",
+ "sp-runtime",
+]
+
+[[package]]
+name = "pallet-utility"
+version = "46.0.0"
+source = "git+https://github.com/paritytech/polkadot-sdk?branch=stable2603#9e54ba9c63b81b630ded4bc798f3b9c406060545"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core",
+ "sp-io",
  "sp-runtime",
 ]
 
@@ -11504,6 +11529,7 @@ dependencies = [
  "pallet-im-online",
  "pallet-multisig",
  "pallet-preimage",
+ "pallet-proxy",
  "pallet-referenda",
  "pallet-reward",
  "pallet-scheduler",
@@ -11513,6 +11539,7 @@ dependencies = [
  "pallet-transaction-payment",
  "pallet-transaction-payment-rpc-runtime-api",
  "pallet-treasury",
+ "pallet-utility",
  "pallet-validator",
  "parity-scale-codec",
  "poscan",
