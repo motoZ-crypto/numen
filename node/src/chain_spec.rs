@@ -1,7 +1,7 @@
 use sc_service::ChainType;
 use serde_json::json;
 use solochain_template_runtime::{
-	genesis_config_presets::INTEGRATION_RUNTIME_PRESET, WASM_BINARY,
+	configs::SS58Prefix, genesis_config_presets::INTEGRATION_RUNTIME_PRESET, WASM_BINARY,
 };
 
 /// Specialized `ChainSpec`. This is a specialization of the general Substrate ChainSpec type.
@@ -9,6 +9,7 @@ pub type ChainSpec = sc_service::GenericChainSpec;
 
 fn chain_properties() -> sc_service::Properties {
 	serde_json::from_value(json!({
+		"ss58Format": SS58Prefix::get(),
 		"tokenDecimals": 18,
 		"tokenSymbol": "NUMN"
 	}))

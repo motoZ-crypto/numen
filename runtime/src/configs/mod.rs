@@ -57,7 +57,7 @@ parameter_types! {
 			|max| *max = NORMAL_DISPATCH_RATIO * (5 * 1024 * 1024),
 		)
 		.build();
-	pub const SS58Prefix: u8 = 42;
+	pub const SS58Prefix: u16 = 14240;
 }
 
 #[cfg(not(feature = "zombienet-runtime"))]
@@ -97,7 +97,8 @@ impl frame_system::Config for Runtime {
 	type Version = Version;
 	/// The data to be stored in an account.
 	type AccountData = pallet_balances::AccountData<Balance>;
-	/// This is used as an identifier of the chain. 42 is the generic substrate prefix.
+	/// Prefix 14240 pins base58 addresses to a leading "nu", echoing the
+	/// Numen brand.
 	type SS58Prefix = SS58Prefix;
 	type MaxConsumers = frame_support::traits::ConstU32<16>;
 }
