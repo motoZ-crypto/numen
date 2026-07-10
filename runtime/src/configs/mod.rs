@@ -334,9 +334,9 @@ impl pallet_grandpa::Config for Runtime {
 /// Block-author finder shared by `pallet-authorship` and `pallet-reward`.
 ///
 /// The internal and external miners write the block author as the payload of a
-/// `PreRuntime(POW_ENGINE_ID, _)` digest. Decoding it here lets fee routing
-/// ([`DealWithFees`]) credit the miner and lets the GRANDPA equivocation report
-/// pipeline attribute a reporter.
+/// `PreRuntime(POW_ENGINE_ID, _)` digest. Decoding it in one place lets fee
+/// routing ([`DealWithFees`]) credit the miner, pays out the block reward, and
+/// lets the GRANDPA equivocation report pipeline attribute a reporter.
 pub struct PowFindAuthor;
 
 impl frame_support::traits::FindAuthor<AccountId> for PowFindAuthor {

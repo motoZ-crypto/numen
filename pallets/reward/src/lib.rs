@@ -77,10 +77,6 @@ pub mod pallet {
             reward
         }
 
-        /// Extract the block author from the PoW pre-runtime digest.
-        ///
-        /// The miner encodes their `AccountId` as the payload of a
-        /// `PreRuntime(POW_ENGINE_ID, _)` digest item.
         fn find_author() -> Option<T::AccountId> {
             let digest = frame_system::Pallet::<T>::digest();
             T::FindAuthor::find_author(digest.logs.iter().filter_map(|log| log.as_pre_runtime()))
