@@ -12,6 +12,11 @@ use sp_core::{H160, U256};
 use sp_genesis_builder::{self, PresetId};
 use sp_keyring::{Ed25519Keyring, Sr25519Keyring};
 
+/// Genesis issuance seeded into the substrate-side balances, split evenly
+/// across the endowed accounts. The remaining 400 million UNIT of the 1 billion
+/// UNIT supply cap is emitted over time as mining rewards.
+const GENESIS_ISSUANCE: u128 = 600_000_000 * UNIT;
+
 /// Per-account starting balance for the well-known Frontier dev EVM accounts,
 /// pre-funded only by the development-facing presets (dev / local /
 /// integration). One million UNIT is far more than any tooling test needs.
@@ -83,7 +88,13 @@ fn testnet_genesis(
 	root: AccountId,
 	initial_validators: Vec<(AccountId, GrandpaId, ImOnlineId)>,
 ) -> Value {
-	testnet_genesis_with_extra_keys(endowed_accounts, root, initial_validators, Vec::new())
+	testnet_genesis_with_extra_keys(
+		endowed_accounts,
+		root,
+		initial_validators,
+		Vec::new(),
+		dev_evm_accounts(),
+	)
 }
 
 fn testnet_genesis_with_extra_keys(
@@ -91,9 +102,9 @@ fn testnet_genesis_with_extra_keys(
 	root: AccountId,
 	initial_validators: Vec<(AccountId, GrandpaId, ImOnlineId)>,
 	extra_session_keys: Vec<(AccountId, GrandpaId, ImOnlineId)>,
+	evm_accounts: BTreeMap<H160, GenesisAccount>,
 ) -> Value {
-	let total_supply: u128 = 1_000_000_000 * UNIT;
-	let balance_per_account = total_supply / endowed_accounts.len() as u128;
+	let balance_per_account = GENESIS_ISSUANCE / endowed_accounts.len() as u128;
 	let initial_difficulty = U256::from(1_000u64);
 	let validator_accounts: Vec<AccountId> =
 		initial_validators.iter().map(|(a, _, _)| a.clone()).collect();
@@ -134,7 +145,7 @@ fn testnet_genesis_with_extra_keys(
 			..Default::default()
 		},
 		evm: EVMConfig {
-			accounts: dev_evm_accounts(),
+			accounts: evm_accounts,
 			..Default::default()
 		},
 	})
@@ -237,6 +248,7 @@ pub fn integration_config_genesis() -> Value {
 			),
 		],
 		vec![],
+		dev_evm_accounts(),
 	)
 }
 
@@ -271,6 +283,7 @@ pub fn testnet_config_genesis() -> Value {
 			),
 		],
 		vec![],
+		BTreeMap::new(),
 	)
 }
 
@@ -305,6 +318,7 @@ pub fn mainnet_config_genesis() -> Value {
 			),
 		],
 		vec![],
+		BTreeMap::new(),
 	)
 }
 
