@@ -20,7 +20,7 @@ const ALITH_PK =
 const BALTATHAR = "0x3Cd0A705a2DC65e5b1E1205896BaA2be8A07c6e0";
 const PRECOMPILE = "0x0000000000000000000000000000000000000802";
 const AMOUNT = parseEther(process.env.AMOUNT || "1.5");
-const EXPECTED_CHAIN_ID = 32026n;
+const EXPECTED_CHAIN_ID = 320262n;
 
 const ERC20_ABI = [
   "function name() view returns (string)",

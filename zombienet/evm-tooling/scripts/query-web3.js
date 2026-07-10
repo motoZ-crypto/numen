@@ -29,8 +29,8 @@ async function main() {
     console.log(`${name} ${addr}: ${web3.utils.fromWei(bal, "ether")} NUMN`);
   }
 
-  if (Number(chainId) !== 32026) {
-    console.error(`unexpected chainId ${chainId}, want 32026`);
+  if (Number(chainId) !== 320262) {
+    console.error(`unexpected chainId ${chainId}, want 320262`);
     process.exit(1);
   }
 }

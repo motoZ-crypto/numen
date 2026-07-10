@@ -35,7 +35,7 @@ const ALICE_PUBKEY =
   process.env.SUBSTRATE_DEST ||
   "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d";
 const AMOUNT = parseEther(process.env.AMOUNT || "2.5");
-const EXPECTED_CHAIN_ID = 32026n;
+const EXPECTED_CHAIN_ID = 320262n;
 
 const ABI = [
   "function balanceOf(address) view returns (uint256)",

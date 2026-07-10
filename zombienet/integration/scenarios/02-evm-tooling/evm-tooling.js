@@ -2,7 +2,7 @@
 //
 // Verifies, over ethers v6 + Frontier JSON-RPC, the whole EVM tooling surface
 // this runtime owns:
-//   1. config smoke + cross-node consistency: eth_chainId == 32026 and the
+//   1. config smoke + cross-node consistency: eth_chainId == 320262 and the
 //      initial baseFeePerGas == 1 gwei, identical when read from alice/bob/
 //      charlie (validates pallet-evm ChainId and pallet-base-fee defaults).
 //   2. minimal deploy path: deploy init code that returns a single STOP byte,
@@ -32,7 +32,7 @@ const ALITH_PK =
 const PRECOMPILE = "0x0000000000000000000000000000000000000802";
 const ABI = ["function withdraw(bytes32,uint256) returns (bool)"];
 
-const EXPECTED_CHAIN_ID = 32026n;
+const EXPECTED_CHAIN_ID = 320262n;
 const ONE_GWEI = 1_000_000_000n;
 const UNIT = 10n ** 18n; // runtime UNIT == 1e18, EVM uses 18 decimals.
 const TOPUP = 10n * UNIT; // SS58 -> EVM amount.

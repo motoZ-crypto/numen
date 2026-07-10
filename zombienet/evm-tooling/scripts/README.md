@@ -31,7 +31,7 @@ Override the endpoint with `CRYPTO_NODE_RPC=http://host:port`.
 Each script exits non-zero on assertion failure:
 
 - `transfer-ethers.js` — recipient balance delta must equal the transfer amount.
-- `query-web3.js` — chain id must be `32026`.
+- `query-web3.js` — chain id must be `320262`.
 - `transfer-precompile.js` — `balanceOf` must equal `eth_getBalance` and the
   recipient delta must match the transfer amount.
 - `withdraw-to-substrate.js` — the receipt must contain a

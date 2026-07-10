@@ -37,7 +37,7 @@ export default defineConfig({
       type: "http",
       chainType: "generic",
       url: process.env.CRYPTO_NODE_RPC ?? "http://127.0.0.1:9944",
-      chainId: 32026,
+      chainId: 320262,
       accounts: [ALITH_PK, BALTATHAR_PK, CHARLETH_PK],
     },
   },

@@ -12,9 +12,9 @@ describe("Token (cryptoNode)", function () {
   // mocha timeout so block-confirmation latency doesn't fail the suite.
   this.timeout(120_000);
 
-  it("reports the configured EVM chain id (32026)", async function () {
+  it("reports the configured EVM chain id (320262)", async function () {
     const { chainId } = await ethers.provider.getNetwork();
-    expect(Number(chainId)).to.equal(32026);
+    expect(Number(chainId)).to.equal(320262);
   });
 
   it("deploys, transfers, and reflects the new balances", async function () {

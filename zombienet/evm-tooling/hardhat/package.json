@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Hardhat 3 compatibility sample for crypto-node (Frontier EVM, ChainId 32026).",
+  "description": "Hardhat 3 compatibility sample for crypto-node (Frontier EVM, ChainId 320262).",
   "scripts": {
     "compile": "hardhat compile",
     "test": "hardhat --network cryptoNode test mocha",

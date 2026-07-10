@@ -18,7 +18,7 @@ The corresponding zombienet end-to-end scenario lives at [`../integration/scenar
 | ------------------ | ----------------------- |
 | RPC URL (default)  | `http://127.0.0.1:9944` |
 | WebSocket URL      | `ws://127.0.0.1:9944`   |
-| Chain ID           | `32026`                 |
+| Chain ID           | `320262`                 |
 | Currency symbol    | `NUMN`                  |
 | Decimals           | `18`                    |
 | Block explorer URL | _(none yet)_            |
@@ -54,11 +54,11 @@ Open MetaMask → **Networks → Add a custom network**:
 
 - Network name: `Numen Dev`
 - New RPC URL: `http://127.0.0.1:9944`
-- Chain ID: `32026`
+- Chain ID: `320262`
 - Currency symbol: `NUMN`
 - Block explorer URL: _(leave blank)_
 
-Save. MetaMask will validate that the RPC responds to `eth_chainId` and returns `0x7d1a` (== 32026).
+Save. MetaMask will validate that the RPC responds to `eth_chainId` and returns `0x4e306` (== 320262).
 
 ### 2. Import a pre-funded account
 
