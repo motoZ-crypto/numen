@@ -37,13 +37,20 @@ impl SubstrateCli for Cli {
 	}
 
 	fn load_spec(&self, id: &str) -> Result<Box<dyn sc_service::ChainSpec>, String> {
-		Ok(match id {
-			"dev" => Box::new(chain_spec::development_chain_spec()?),
-			"" | "local" => Box::new(chain_spec::local_chain_spec()?),
-			"integration" => Box::new(chain_spec::integration_chain_spec()?),
-			path =>
-				Box::new(chain_spec::ChainSpec::from_json_file(std::path::PathBuf::from(path))?),
-		})
+		match id {
+			"dev" => Ok(Box::new(chain_spec::development_chain_spec()?)),
+			"integration" => Ok(Box::new(chain_spec::integration_chain_spec()?)),
+			"local" => Ok(Box::new(chain_spec::local_chain_spec()?)),
+			"testnet" => Ok(Box::new(chain_spec::testnet_chain_spec()?)),
+			"mainnet" => Ok(Box::new(chain_spec::mainnet_chain_spec()?)),
+			"" => Err(
+				"Chain specification not provided. Please specify it with the argument `--chain <SPEC>`."
+					.to_owned(),
+			),
+			path => Ok(Box::new(chain_spec::ChainSpec::from_json_file(std::path::PathBuf::from(
+				path,
+			))?)),
+		}
 	}
 }
 

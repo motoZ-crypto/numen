@@ -241,7 +241,77 @@ pub fn integration_config_genesis() -> Value {
 	)
 }
 
+pub fn testnet_config_genesis() -> Value {
+	testnet_genesis_with_extra_keys(
+		vec![
+			Sr25519Keyring::Alice.to_account_id(),
+			Sr25519Keyring::Bob.to_account_id(),
+			Sr25519Keyring::Charlie.to_account_id(),
+			Sr25519Keyring::Dave.to_account_id(),
+			Sr25519Keyring::Eve.to_account_id(),
+			Sr25519Keyring::Ferdie.to_account_id(),
+			Sr25519Keyring::AliceStash.to_account_id(),
+			Sr25519Keyring::BobStash.to_account_id(),
+		],
+		Sr25519Keyring::Alice.to_account_id(),
+		vec![
+			(
+				Sr25519Keyring::Alice.to_account_id(),
+				Ed25519Keyring::Alice.public().into(),
+				im_online_from_keyring(Sr25519Keyring::Alice),
+			),
+			(
+				Sr25519Keyring::Bob.to_account_id(),
+				Ed25519Keyring::Bob.public().into(),
+				im_online_from_keyring(Sr25519Keyring::Bob),
+			),
+			(
+				Sr25519Keyring::Charlie.to_account_id(),
+				Ed25519Keyring::Charlie.public().into(),
+				im_online_from_keyring(Sr25519Keyring::Charlie),
+			),
+		],
+		vec![],
+	)
+}
+
+pub fn mainnet_config_genesis() -> Value {
+	testnet_genesis_with_extra_keys(
+		vec![
+			Sr25519Keyring::Alice.to_account_id(),
+			Sr25519Keyring::Bob.to_account_id(),
+			Sr25519Keyring::Charlie.to_account_id(),
+			Sr25519Keyring::Dave.to_account_id(),
+			Sr25519Keyring::Eve.to_account_id(),
+			Sr25519Keyring::Ferdie.to_account_id(),
+			Sr25519Keyring::AliceStash.to_account_id(),
+			Sr25519Keyring::BobStash.to_account_id(),
+		],
+		Sr25519Keyring::Alice.to_account_id(),
+		vec![
+			(
+				Sr25519Keyring::Alice.to_account_id(),
+				Ed25519Keyring::Alice.public().into(),
+				im_online_from_keyring(Sr25519Keyring::Alice),
+			),
+			(
+				Sr25519Keyring::Bob.to_account_id(),
+				Ed25519Keyring::Bob.public().into(),
+				im_online_from_keyring(Sr25519Keyring::Bob),
+			),
+			(
+				Sr25519Keyring::Charlie.to_account_id(),
+				Ed25519Keyring::Charlie.public().into(),
+				im_online_from_keyring(Sr25519Keyring::Charlie),
+			),
+		],
+		vec![],
+	)
+}
+
 pub const INTEGRATION_RUNTIME_PRESET: &str = "integration";
+pub const TESTNET_RUNTIME_PRESET: &str = "testnet";
+pub const MAINNET_RUNTIME_PRESET: &str = "mainnet";
 
 /// Provides the JSON representation of predefined genesis config for given `id`.
 pub fn get_preset(id: &PresetId) -> Option<Vec<u8>> {
@@ -249,6 +319,8 @@ pub fn get_preset(id: &PresetId) -> Option<Vec<u8>> {
 		sp_genesis_builder::DEV_RUNTIME_PRESET => development_config_genesis(),
 		sp_genesis_builder::LOCAL_TESTNET_RUNTIME_PRESET => local_config_genesis(),
 		INTEGRATION_RUNTIME_PRESET => integration_config_genesis(),
+		TESTNET_RUNTIME_PRESET => testnet_config_genesis(),
+		MAINNET_RUNTIME_PRESET => mainnet_config_genesis(),
 		_ => return None,
 	};
 	Some(
@@ -264,5 +336,7 @@ pub fn preset_names() -> Vec<PresetId> {
 		PresetId::from(sp_genesis_builder::DEV_RUNTIME_PRESET),
 		PresetId::from(sp_genesis_builder::LOCAL_TESTNET_RUNTIME_PRESET),
 		PresetId::from(INTEGRATION_RUNTIME_PRESET),
+		PresetId::from(TESTNET_RUNTIME_PRESET),
+		PresetId::from(MAINNET_RUNTIME_PRESET),
 	]
 }
