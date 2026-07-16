@@ -441,10 +441,9 @@ impl pallet_validator::Config for Runtime {
 	type SessionInterface = ValidatorSessionAdapter;
 	type SessionPeriod = SessionPeriod;
 	type SessionOffset = SessionOffset;
-	type LockAmount = ConstU128<{ 1_000 * UNIT }>;
+	type LockAmount = ConstU128<{ 1_000_000 * UNIT }>;
 	type StakeExempt = StakeExemptAccounts;
-	#[allow(clippy::identity_op)]
-	type LockDuration = ConstU32<{ 1 * DAYS }>;
+	type LockDuration = ConstU32<{ 180 * DAYS }>;
 	type LockId = ValidatorLockId;
 	type MaxValidators = ConstU32<1_000>;
 	#[allow(clippy::identity_op)]
