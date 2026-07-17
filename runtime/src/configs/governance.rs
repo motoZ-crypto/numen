@@ -1,6 +1,6 @@
 //! OpenGov configuration. Token holders steer treasury spends and bounty
-//! approvals through referenda. The spender origin carries a funding cap and
-//! never reaches runtime level calls, which stay on the root track.
+//! approvals through tiered spender tracks, each capping the amount its
+//! referenda can release. Runtime level calls have no referendum track.
 
 use crate::{
 	AccountId, Balance, Balances, BlockNumber, Preimage, Referenda, Runtime, RuntimeCall,
@@ -15,11 +15,11 @@ use frame_system::{EnsureRoot, EnsureRootWithSuccess, EnsureSigned};
 use pallet_referenda::{Curve, Track, TrackInfo};
 use sp_runtime::{str_array as s, FixedI64};
 
-pub use pallet_custom_origins::Spender;
+pub use pallet_custom_origins::{BigSpender, MediumSpender, SmallSpender};
 
 #[frame_support::pallet]
 pub mod pallet_custom_origins {
-	use crate::Balance;
+	use crate::{Balance, UNIT};
 	use frame_support::pallet_prelude::*;
 
 	#[pallet::config]
@@ -33,8 +33,12 @@ pub mod pallet_custom_origins {
 	)]
 	#[pallet::origin]
 	pub enum Origin {
-		/// Origin able to spend treasury funds and approve bounties.
-		Spender,
+		/// Treasury spends and bounty approvals up to the small tier cap.
+		SmallSpender,
+		/// Treasury spends and bounty approvals up to the medium tier cap.
+		MediumSpender,
+		/// Treasury spends and bounty approvals up to the big tier cap.
+		BigSpender,
 	}
 
 	macro_rules! decl_ensure {
@@ -71,8 +75,20 @@ pub mod pallet_custom_origins {
 	}
 
 	decl_ensure! {
-		pub type Spender: EnsureOrigin<Success = Balance> {
-			Spender = Balance::MAX,
+		pub type SmallSpender: EnsureOrigin<Success = Balance> {
+			SmallSpender = 100_000 * UNIT,
+		}
+	}
+
+	decl_ensure! {
+		pub type MediumSpender: EnsureOrigin<Success = Balance> {
+			MediumSpender = 1_000_000 * UNIT,
+		}
+	}
+
+	decl_ensure! {
+		pub type BigSpender: EnsureOrigin<Success = Balance> {
+			BigSpender = 5_000_000 * UNIT,
 		}
 	}
 }
@@ -81,38 +97,54 @@ const fn percent(x: i32) -> FixedI64 {
 	FixedI64::from_rational(x as u128, 100)
 }
 
-const APP_ROOT: Curve = Curve::make_reciprocal(2, 14, percent(80), percent(50), percent(100));
-const SUP_ROOT: Curve = Curve::make_linear(14, 14, percent(0), percent(50));
-const APP_SPENDER: Curve = Curve::make_linear(14, 14, percent(50), percent(100));
-const SUP_SPENDER: Curve = Curve::make_linear(14, 14, percent(0), percent(50));
+const APP_SMALL: Curve = Curve::make_linear(7, 7, percent(50), percent(100));
+const SUP_SMALL: Curve = Curve::make_linear(7, 7, percent(0), percent(50));
+const APP_MEDIUM: Curve = Curve::make_linear(14, 14, percent(60), percent(100));
+const SUP_MEDIUM: Curve = Curve::make_linear(14, 14, percent(2), percent(50));
+const APP_BIG: Curve = Curve::make_linear(28, 28, percent(70), percent(100));
+const SUP_BIG: Curve = Curve::make_linear(28, 28, percent(5), percent(50));
 
-const TRACKS_DATA: [Track<u16, Balance, BlockNumber>; 2] = [
+const TRACKS_DATA: [Track<u16, Balance, BlockNumber>; 3] = [
 	Track {
 		id: 0,
 		info: TrackInfo {
-			name: s("root"),
-			max_deciding: 1,
-			decision_deposit: 10_000 * UNIT,
+			name: s("small_spender"),
+			max_deciding: 20,
+			decision_deposit: 100 * UNIT,
 			prepare_period: HOURS,
-			decision_period: 14 * DAYS,
+			decision_period: 7 * DAYS,
 			confirm_period: DAYS,
 			min_enactment_period: DAYS,
-			min_approval: APP_ROOT,
-			min_support: SUP_ROOT,
+			min_approval: APP_SMALL,
+			min_support: SUP_SMALL,
 		},
 	},
 	Track {
 		id: 1,
 		info: TrackInfo {
-			name: s("spender"),
+			name: s("medium_spender"),
 			max_deciding: 10,
-			decision_deposit: 1_000 * UNIT,
+			decision_deposit: 5_000 * UNIT,
 			prepare_period: HOURS,
-			decision_period: 7 * DAYS,
-			confirm_period: DAYS,
-			min_enactment_period: DAYS,
-			min_approval: APP_SPENDER,
-			min_support: SUP_SPENDER,
+			decision_period: 14 * DAYS,
+			confirm_period: 3 * DAYS,
+			min_enactment_period: 3 * DAYS,
+			min_approval: APP_MEDIUM,
+			min_support: SUP_MEDIUM,
+		},
+	},
+	Track {
+		id: 2,
+		info: TrackInfo {
+			name: s("big_spender"),
+			max_deciding: 4,
+			decision_deposit: 100_000 * UNIT,
+			prepare_period: HOURS,
+			decision_period: 28 * DAYS,
+			confirm_period: 7 * DAYS,
+			min_enactment_period: 7 * DAYS,
+			min_approval: APP_BIG,
+			min_support: SUP_BIG,
 		},
 	},
 ];
@@ -127,14 +159,11 @@ impl pallet_referenda::TracksInfo<Balance, BlockNumber> for TracksInfo {
 	}
 
 	fn track_for(id: &Self::RuntimeOrigin) -> Result<Self::Id, ()> {
-		if let Ok(system_origin) = frame_system::RawOrigin::try_from(id.clone()) {
-			match system_origin {
-				frame_system::RawOrigin::Root => Ok(0),
-				_ => Err(()),
-			}
-		} else if let Ok(custom) = pallet_custom_origins::Origin::try_from(id.clone()) {
+		if let Ok(custom) = pallet_custom_origins::Origin::try_from(id.clone()) {
 			match custom {
-				pallet_custom_origins::Origin::Spender => Ok(1),
+				pallet_custom_origins::Origin::SmallSpender => Ok(0),
+				pallet_custom_origins::Origin::MediumSpender => Ok(1),
+				pallet_custom_origins::Origin::BigSpender => Ok(2),
 			}
 		} else {
 			Err(())
@@ -164,8 +193,12 @@ impl pallet_conviction_voting::Config for Runtime {
 
 impl pallet_custom_origins::Config for Runtime {}
 
-/// Treasury and bounty spends accept either root or the OpenGov spender track.
-pub type TreasurySpender = EitherOf<EnsureRootWithSuccess<AccountId, super::MaxBalance>, Spender>;
+/// Treasury and bounty spends accept root or any spender tier, each capped at
+/// its tier amount.
+pub type TreasurySpender = EitherOf<
+	EnsureRootWithSuccess<AccountId, super::MaxBalance>,
+	EitherOf<SmallSpender, EitherOf<MediumSpender, BigSpender>>,
+>;
 
 impl pallet_referenda::Config for Runtime {
 	type WeightInfo = pallet_referenda::weights::SubstrateWeight<Runtime>;

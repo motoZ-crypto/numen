@@ -97,7 +97,8 @@ fn dev_balances() -> Vec<(AccountId, u128)> {
 		(Sr25519Keyring::Charlie.to_account_id(), DEV_ACCOUNT_BALANCE),
 		(Sr25519Keyring::Dave   .to_account_id(), DEV_ACCOUNT_BALANCE),
 		(Sr25519Keyring::Eve    .to_account_id(), DEV_ACCOUNT_BALANCE),
-		(Sr25519Keyring::Ferdie .to_account_id(), DEV_ACCOUNT_BALANCE)
+		(Sr25519Keyring::Ferdie .to_account_id(), DEV_ACCOUNT_BALANCE),
+		(crate::configs::TreasuryAccount::get(), GENESIS_TREASURY_ISSUANCE)
 	]
 }
 
