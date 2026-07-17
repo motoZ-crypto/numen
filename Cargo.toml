@@ -13,6 +13,7 @@ members = [
     "consensus/sc-consensus-pow",
     "node",
     "pallets/difficulty",
+    "pallets/prime",
     "pallets/reward",
     "pallets/validator",
     "precompiles/balances-erc20",
@@ -26,6 +27,7 @@ poscan = { path = "./consensus/poscan", default-features = false }
 poscan-pow = { path = "./consensus/poscan-pow", default-features = false }
 obj-asteroid = { path = "./consensus/obj-asteroid", default-features = false }
 pallet-difficulty = { path = "./pallets/difficulty", default-features = false }
+pallet-prime = { path = "./pallets/prime", default-features = false }
 pallet-reward = { path = "./pallets/reward", default-features = false }
 pallet-validator = { path = "./pallets/validator", default-features = false }
 clap = { version = "4.6.1" }
@@ -85,6 +87,7 @@ sp-blockchain = { git = "https://github.com/paritytech/polkadot-sdk", branch = "
 sp-consensus = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2603", default-features = false }
 sp-consensus-aura = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2603", default-features = false }
 sp-core = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2603", default-features = false }
+sp-externalities = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2603", default-features = false }
 sp-genesis-builder = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2603", default-features = false }
 sp-inherents = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2603", default-features = false }
 sp-io = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2603", default-features = false }

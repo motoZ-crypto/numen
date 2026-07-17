@@ -7314,6 +7314,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-prime"
+version = "0.1.0"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core",
+ "sp-externalities",
+ "sp-io",
+ "sp-runtime",
+ "sp-version",
+]
+
+[[package]]
 name = "pallet-proxy"
 version = "46.0.0"
 source = "git+https://github.com/paritytech/polkadot-sdk?branch=stable2603#9e54ba9c63b81b630ded4bc798f3b9c406060545"
@@ -11530,6 +11545,7 @@ dependencies = [
  "pallet-im-online",
  "pallet-multisig",
  "pallet-preimage",
+ "pallet-prime",
  "pallet-proxy",
  "pallet-referenda",
  "pallet-reward",

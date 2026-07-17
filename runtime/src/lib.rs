@@ -287,6 +287,9 @@ mod runtime {
 
 	#[runtime::pallet_index(26)]
 	pub type Proxy = pallet_proxy;
+
+	#[runtime::pallet_index(27)]
+	pub type Prime = pallet_prime;
 }
 
 // pallet-im-online submits unsigned heartbeat extrinsics from offchain

@@ -192,6 +192,10 @@ impl pallet_sudo::Config for Runtime {
 	type WeightInfo = pallet_sudo::weights::SubstrateWeight<Runtime>;
 }
 
+impl pallet_prime::Config for Runtime {
+	type WeightInfo = pallet_prime::weights::SubstrateWeight<Runtime>;
+}
+
 parameter_types! {
 	/// Deposits track the storage footprint of a pending multisig. Each
 	/// signatory adds 32 bytes, priced at the same 0.01 NUMN per byte as
