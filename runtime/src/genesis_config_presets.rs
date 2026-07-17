@@ -105,7 +105,9 @@ fn dev_balances() -> Vec<(AccountId, u128)> {
 fn live_balances() -> Vec<(AccountId, u128)> {
 	vec![
 		(crate::configs::TreasuryAccount::get(), GENESIS_TREASURY_ISSUANCE),
-		(hex!("583fb79e17f3a9fabfee4068410b3d9ebb64465dba8e6342cd7f59272509983a").into(), GENESIS_AIRDROP_ISSUANCE)
+
+		// nu5DropA1BwvKhPMDLrMXNFCmo4B9PK71iuZEMxESSJGvoyMg
+		(hex!("721bc027868036fd2aecafd08b6942f60da6070992a2564822ee3b3307a5ca5b").into(), GENESIS_AIRDROP_ISSUANCE)
 	]
 }
 
