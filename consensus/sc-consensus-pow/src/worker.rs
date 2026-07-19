@@ -364,6 +364,7 @@ mod tests {
 		}
 	}
 
+	#[allow(clippy::type_complexity)]
 	fn handle() -> (MiningHandle<Block, AcceptAll, ()>, Arc<Mutex<Vec<H256>>>) {
 		let imported = Arc::new(Mutex::new(Vec::new()));
 		let import = RecordingImport(imported.clone());

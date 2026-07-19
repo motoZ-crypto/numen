@@ -146,7 +146,7 @@ fn evm_base_fee_and_tip_credit_the_block_author() {
 		);
 		assert_eq!(author_gain, caller_spent, "every wei the caller pays reaches the author");
 		assert_eq!(
-			Balances::free_balance(&evm_account(H160::zero())),
+			Balances::free_balance(evm_account(H160::zero())),
 			0,
 			"the tip must bypass the zero coinbase the default handler pays",
 		);

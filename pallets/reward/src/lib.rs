@@ -71,8 +71,8 @@ pub mod pallet {
             let mut reward = T::InitialReward::get();
             let two = BalanceOf::<T>::from(2u32);
             while !halvings.is_zero() && !reward.is_zero() {
-                reward = reward / two;
-                halvings = halvings - One::one();
+                reward /= two;
+                halvings -= One::one();
             }
             reward
         }

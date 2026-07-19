@@ -240,17 +240,13 @@ parameter_types! {
 	Debug,
 	MaxEncodedLen,
 	TypeInfo,
+	Default,
 )]
 pub enum ProxyType {
+	#[default]
 	Any,
 	NonTransfer,
 	Governance,
-}
-
-impl Default for ProxyType {
-	fn default() -> Self {
-		Self::Any
-	}
 }
 
 impl InstanceFilter<RuntimeCall> for ProxyType {

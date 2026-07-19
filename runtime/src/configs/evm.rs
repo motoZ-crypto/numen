@@ -201,10 +201,10 @@ impl OnChargeEVMTransaction<Runtime> for EvmDealWithFees {
 	}
 
 	fn pay_priority_fee(tip: Self::LiquidityInfo) {
-		if let Some(tip) = tip {
-			if let Some(author) = Authorship::author() {
-				let _ = <Balances as Balanced<AccountId>>::resolve(&author, tip);
-			}
+		if let Some(tip) = tip
+			&& let Some(author) = Authorship::author()
+		{
+			let _ = <Balances as Balanced<AccountId>>::resolve(&author, tip);
 		}
 	}
 }
