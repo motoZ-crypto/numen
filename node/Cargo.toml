@@ -1,5 +1,5 @@
 [package]
-name = "numen-node"
+name = "numen"
 description = "Numen node built on Polkadot SDK."
 version = "0.1.0"
 license.workspace = true

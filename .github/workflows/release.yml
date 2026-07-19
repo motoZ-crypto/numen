@@ -60,7 +60,7 @@ jobs:
       - name: Stage artifacts
         run: |
           mkdir -p stage
-          cp target/release/numen-node stage/
+          cp target/release/numen stage/
           cp zombienet/integration/integration-raw.json stage/
       - uses: actions/upload-artifact@v4
         with:
@@ -83,8 +83,8 @@ jobs:
       - name: Restore artifacts
         run: |
           mkdir -p target/release
-          cp stage/numen-node target/release/
-          chmod +x target/release/numen-node
+          cp stage/numen target/release/
+          chmod +x target/release/numen
           cp stage/integration-raw.json zombienet/integration/
       - name: Install zombienet
         run: |
@@ -105,9 +105,9 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            asset: numen-node-linux-x86_64
+            asset: numen-linux-x86_64
           - os: macos-latest
-            asset: numen-node-macos-arm64
+            asset: numen-macos-arm64
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -128,7 +128,7 @@ jobs:
       - name: Bundle release archive
         run: |
           mkdir -p ${{ matrix.asset }}
-          cp target/release/numen-node ${{ matrix.asset }}/
+          cp target/release/numen ${{ matrix.asset }}/
           cp testnet-raw.json ${{ matrix.asset }}/
           tar -czf ${{ matrix.asset }}.tar.gz ${{ matrix.asset }}
 
@@ -144,6 +144,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
+          pattern: '*.tar.gz'
           merge-multiple: true
 
       - name: release

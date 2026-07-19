@@ -15,7 +15,7 @@ End-to-end Hardhat 3 workflow against a local numen dev chain. Verifies that com
 
 ```bash
 # 1. start a single-node dev chain in another terminal
-./target/release/numen-node --dev --rpc-cors all --rpc-port 9944
+./target/release/numen --dev --rpc-cors all --rpc-port 9944
 
 # 2. install JS deps
 cd zombienet/evm-tooling/hardhat

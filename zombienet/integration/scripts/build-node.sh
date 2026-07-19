@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-# Build the numen-node binary with the `zombienet-runtime` feature.
+# Build the numen binary with the `zombienet-runtime` feature.
 
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 cd "$ROOT"
 
-cargo build --release -p numen-node --features zombienet-runtime
+cargo build --release -p numen --features zombienet-runtime
 
-BIN="$ROOT/target/release/numen-node"
+BIN="$ROOT/target/release/numen"
 echo "Built: $BIN"
 "$BIN" --version
 

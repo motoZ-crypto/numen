@@ -6747,7 +6747,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "numen-node"
+name = "numen"
 version = "0.1.0"
 dependencies = [
  "clap",

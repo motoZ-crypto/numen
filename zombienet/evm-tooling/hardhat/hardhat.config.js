@@ -2,7 +2,7 @@
 //
 // `numen` connects to the HTTP JSON-RPC port exposed by:
 //
-//   ./target/release/numen-node \
+//   ./target/release/numen \
 //       --dev --rpc-port 9944 --rpc-cors all
 //
 // Accounts are the publicly documented Frontier dev keys pre-funded by every

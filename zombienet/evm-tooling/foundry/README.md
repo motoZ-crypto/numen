@@ -15,7 +15,7 @@ Smoke-tests `forge` / `cast` against a local numen dev chain over the Frontier E
 
 ```bash
 # 1. start a single-node dev chain in another terminal
-./target/release/numen-node --dev --rpc-cors all --rpc-port 9944
+./target/release/numen --dev --rpc-cors all --rpc-port 9944
 
 # 2. install forge-std (only on first checkout)
 cd zombienet/evm-tooling/foundry

@@ -7,7 +7,7 @@ provider = "native"
 [relaychain]
 chain = "integration"
 chain_spec_path = "integration-raw.json"
-default_command = "../../target/release/numen-node"
+default_command = "../../target/release/numen"
 default_args = [
     "-l=info,sub-libp2p=warn,libp2p_swarm=warn,grandpa=debug,runtime::session=debug,pallet_session=debug",
 ]

@@ -7,7 +7,7 @@ through both `ethers` v6 and `web3` v4.
 
 ```bash
 # 1. start a local dev chain
-./target/release/numen-node --dev --rpc-cors all --rpc-port 9944
+./target/release/numen --dev --rpc-cors all --rpc-port 9944
 
 # 2. install JS deps
 cd zombienet/evm-tooling/scripts

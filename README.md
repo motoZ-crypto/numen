@@ -20,7 +20,7 @@ See [docs/how-to-build.md](docs/how-to-build.md) for instructions on building th
 Mine locally and credit rewards to the given account.
 
 ```bash
-./numen-node --miner <YOUR_ADDRESS> --node-miner
+./numen --miner <YOUR_ADDRESS> --node-miner
 ```
 
 `--miner` sets the reward address and exposes the mining RPC so external miners can scan off the node and submit seals.
