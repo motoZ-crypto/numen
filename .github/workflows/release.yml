@@ -125,13 +125,17 @@ jobs:
         run: cargo build --release
         timeout-minutes: 30
 
-      - name: Rename binary
-        run: cp target/release/numen-node ${{ matrix.asset }}
+      - name: Bundle release archive
+        run: |
+          mkdir -p ${{ matrix.asset }}
+          cp target/release/numen-node ${{ matrix.asset }}/
+          cp testnet-raw.json ${{ matrix.asset }}/
+          tar -czf ${{ matrix.asset }}.tar.gz ${{ matrix.asset }}
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.asset }}
-          path: ${{ matrix.asset }}
+          name: ${{ matrix.asset }}.tar.gz
+          path: ${{ matrix.asset }}.tar.gz
 
   publish:
     needs: [check-version, build-binaries]
