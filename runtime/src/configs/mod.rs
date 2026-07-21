@@ -604,7 +604,6 @@ parameter_types! {
 	pub const Burn: Permill = Permill::zero();
 	pub const PayoutPeriod: BlockNumber = 30 * DAYS;
 	pub const MaxApprovals: u32 = 100;
-	pub const MaxBalance: Balance = Balance::MAX;
 	pub TreasuryAccount: AccountId = TreasuryPalletId::get().into_account_truncating();
 }
 

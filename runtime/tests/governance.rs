@@ -1,5 +1,5 @@
 //! Governance wiring. Bounty and child-bounty lifecycles run end to end under a
-//! root approval origin.
+//! spender approval origin.
 
 mod common;
 
@@ -10,8 +10,9 @@ use frame_support::{
 };
 use pallet_bounties::BountyStatus;
 use numen_runtime::{
-	configs, AccountId, Balance, Balances, BlockNumber, Bounties, ChildBounties, Runtime,
-	RuntimeOrigin, System, Treasury, UNIT,
+	configs::{self, governance::pallet_custom_origins},
+	AccountId, Balance, Balances, BlockNumber, Bounties, ChildBounties, Runtime, RuntimeOrigin,
+	System, Treasury, UNIT,
 };
 use sp_keyring::Sr25519Keyring;
 use sp_runtime::traits::StaticLookup;
@@ -56,20 +57,21 @@ fn fund_approved_bounties() {
 /// Take a parent bounty from proposal to an accepted curator, returning its id.
 fn active_parent_bounty(proposer: &AccountId, curator: &AccountId, value: Balance, fee: Balance) -> u32 {
 	let id = pallet_bounties::BountyCount::<Runtime>::get();
+	let approve = RuntimeOrigin::from(pallet_custom_origins::Origin::SmallSpender);
 	assert_ok!(Bounties::propose_bounty(
 		RuntimeOrigin::signed(proposer.clone()),
 		value,
 		b"parent bounty".to_vec(),
 	));
-	assert_ok!(Bounties::approve_bounty(RuntimeOrigin::root(), id));
+	assert_ok!(Bounties::approve_bounty(approve.clone(), id));
 	fund_approved_bounties();
-	assert_ok!(Bounties::propose_curator(RuntimeOrigin::root(), id, src(curator), fee));
+	assert_ok!(Bounties::propose_curator(approve, id, src(curator), fee));
 	assert_ok!(Bounties::accept_curator(RuntimeOrigin::signed(curator.clone()), id));
 	id
 }
 
 #[test]
-fn bounty_pays_beneficiary_and_curator_after_root_approval() {
+fn bounty_pays_beneficiary_and_curator_after_spender_approval() {
 	let proposer = acc(Sr25519Keyring::Alice);
 	let curator = acc(Sr25519Keyring::Bob);
 	let beneficiary = acc(Sr25519Keyring::Charlie);

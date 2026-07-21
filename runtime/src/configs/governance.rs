@@ -11,7 +11,7 @@ use frame_support::{
 	parameter_types,
 	traits::{ConstU32, EitherOf},
 };
-use frame_system::{EnsureRootWithSuccess, EnsureSigned};
+use frame_system::EnsureSigned;
 use pallet_referenda::{Curve, Track, TrackInfo};
 use sp_runtime::{str_array as s, FixedI64};
 
@@ -193,12 +193,9 @@ impl pallet_conviction_voting::Config for Runtime {
 
 impl pallet_custom_origins::Config for Runtime {}
 
-/// Treasury and bounty spends accept root or any spender tier, each capped at
-/// its tier amount.
-pub type TreasurySpender = EitherOf<
-	EnsureRootWithSuccess<AccountId, super::MaxBalance>,
-	EitherOf<SmallSpender, EitherOf<MediumSpender, BigSpender>>,
->;
+/// Treasury and bounty spends accept any spender tier, each capped at its tier
+/// amount.
+pub type TreasurySpender = EitherOf<SmallSpender, EitherOf<MediumSpender, BigSpender>>;
 
 impl pallet_referenda::Config for Runtime {
 	type WeightInfo = pallet_referenda::weights::SubstrateWeight<Runtime>;

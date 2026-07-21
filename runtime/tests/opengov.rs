@@ -87,13 +87,16 @@ fn higher_tier_approves_what_lower_tier_cannot() {
 }
 
 #[test]
-fn root_origin_still_approves_bounty() {
+fn root_origin_cannot_approve_bounty() {
 	new_test_ext().execute_with(|| {
 		let id = proposed_bounty(SMALL_CAP + 1);
 
-		assert_ok!(Bounties::approve_bounty(RuntimeOrigin::root(), id));
+		assert_noop!(
+			Bounties::approve_bounty(RuntimeOrigin::root(), id),
+			DispatchError::BadOrigin,
+		);
 
-		assert_queued_for_funding(id);
+		assert_still_proposed(id);
 	});
 }
 
