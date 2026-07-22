@@ -10,7 +10,7 @@ use frame_support::{
 	},
 	weights::{
 		constants::{RocksDbWeight, WEIGHT_REF_TIME_PER_SECOND},
-		IdentityFee, Weight,
+		ConstantMultiplier, Weight,
 	},
 	PalletId,
 };
@@ -148,8 +148,14 @@ impl pallet_reward::Config for Runtime {
 
 parameter_types! {
 	pub const TargetBlockFullness: Perquintill = Perquintill::from_percent(25);
-	pub AdjustmentVariable: Multiplier = Multiplier::saturating_from_rational(3, 100_000);
-	pub MinimumMultiplier: Multiplier = Multiplier::saturating_from_rational(1, 1_000_000u128);
+	/// Upstream's 7.5e-5 assumes 6 second blocks, so the step scales with the
+	/// 10 second block time to hold the same wall clock response. Sustained
+	/// full blocks then reach `MaximumMultiplier` in under three days.
+	pub AdjustmentVariable: Multiplier = Multiplier::saturating_from_rational(125, 1_000_000);
+	/// Floor kept symmetric with `MaximumMultiplier`. The stock 1e-6 lets an
+	/// idle chain erode the fee anchor by six orders of magnitude, far looser
+	/// than the 2x floor `pallet-base-fee` holds on the EVM side.
+	pub MinimumMultiplier: Multiplier = Multiplier::saturating_from_rational(1, 10u128);
 	pub MaximumMultiplier: Multiplier = Multiplier::saturating_from_integer(10);
 }
 
@@ -176,12 +182,23 @@ impl OnUnbalanced<Credit<AccountId, Balances>> for DealWithFees {
 	}
 }
 
+/// Price of one weight unit in smallest units, pinned to what the EVM path
+/// charges for the same compute. `WeightPerGas` is 20,000 and the base fee is
+/// 1 gwei, so a gas unit costs 1e9 and a weight unit is worth 1e9 / 20,000.
+/// Any other value makes one path a cheap bypass around the other.
+pub const WEIGHT_FEE: Balance = 50_000;
+
+/// Price of one encoded byte, mirroring Ethereum's 16 gas per non-zero calldata
+/// byte at the same 1 gwei base fee. Keeps a length-full block within the same
+/// order as a weight-full one so neither dimension is the cheap one to abuse.
+pub const LENGTH_FEE: Balance = 16_000_000_000;
+
 impl pallet_transaction_payment::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type OnChargeTransaction = FungibleAdapter<Balances, DealWithFees>;
 	type OperationalFeeMultiplier = ConstU8<5>;
-	type WeightToFee = IdentityFee<Balance>;
-	type LengthToFee = IdentityFee<Balance>;
+	type WeightToFee = ConstantMultiplier<Balance, ConstU128<WEIGHT_FEE>>;
+	type LengthToFee = ConstantMultiplier<Balance, ConstU128<LENGTH_FEE>>;
 	type FeeMultiplierUpdate = SlowAdjustingFeeUpdate<Runtime>;
 	type WeightInfo = pallet_transaction_payment::weights::SubstrateWeight<Runtime>;
 }

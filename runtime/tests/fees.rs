@@ -1,19 +1,28 @@
-//! Fee routing. Substrate fees and EVM base fee plus tip all land on the PoW
-//! author from the block digest, and burn when a block carries no author.
+//! Fee routing and calibration. Substrate fees and EVM base fee plus tip all
+//! land on the PoW author from the block digest, and burn when a block carries
+//! no author. The substrate fee constants stay pinned to the EVM gas price so
+//! neither path undercuts the other.
 
 mod common;
 
 use codec::Encode;
 use common::new_test_ext;
-use frame_support::traits::{
-	tokens::{
-		fungible::{Balanced, Mutate},
-		Fortitude, Precision, Preservation,
+use frame_support::{
+	dispatch::DispatchClass,
+	traits::{
+		tokens::{
+			fungible::{Balanced, Mutate},
+			Fortitude, Precision, Preservation,
+		},
+		OnUnbalanced,
 	},
-	OnUnbalanced,
 };
 use numen_runtime::{
-	configs::DealWithFees, AccountId, Balance, Balances, Runtime, System, UNIT,
+	configs::{
+		evm::DefaultBaseFeePerGas, DealWithFees, RuntimeBlockLength, RuntimeBlockWeights,
+		LENGTH_FEE, WEIGHT_FEE,
+	},
+	AccountId, Balance, Balances, Runtime, System, UNIT,
 };
 use pallet_evm::{AddressMapping, FeeCalculator, Runner};
 use sp_consensus_pow::POW_ENGINE_ID;
@@ -173,4 +182,40 @@ fn evm_fees_burn_without_author_digest() {
 			"base fee and tip both burn in an authorless block",
 		);
 	});
+}
+
+/// `WeightPerGas` derives from the block gas limit and the block weight budget,
+/// so retuning either one silently reprices substrate compute against EVM
+/// compute.
+#[test]
+fn weight_fee_tracks_the_evm_gas_price() {
+	let weight_per_gas =
+		Balance::from(<Runtime as pallet_evm::Config>::WeightPerGas::get().ref_time());
+
+	assert_eq!(
+		WEIGHT_FEE * weight_per_gas,
+		DefaultBaseFeePerGas::get().as_u128(),
+		"one gas unit of work must cost the same through either path",
+	);
+}
+
+/// A block fills on whichever of weight or length runs out first, so the two
+/// have to cost about the same. Otherwise the cheaper dimension carries the
+/// spam.
+#[test]
+fn weight_and_length_price_a_full_block_alike() {
+	let normal_weight = RuntimeBlockWeights::get()
+		.get(DispatchClass::Normal)
+		.max_total
+		.expect("normal class is bounded")
+		.ref_time();
+	let normal_length = *RuntimeBlockLength::get().max.get(DispatchClass::Normal);
+
+	let weight_cost = WEIGHT_FEE * Balance::from(normal_weight);
+	let length_cost = LENGTH_FEE * Balance::from(normal_length);
+
+	assert!(
+		weight_cost <= 2 * length_cost && length_cost <= 2 * weight_cost,
+		"full block costs drifted apart, weight {weight_cost} vs length {length_cost}",
+	);
 }
