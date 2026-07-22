@@ -75,20 +75,16 @@ where
 {
 	type Difficulty = U256;
 
-	fn difficulty(&self, parent: B::Hash) -> Result<U256, PowError<B>> {
-		// Use wall-clock time so difficulty naturally decays even when no
-		// blocks are being produced.
-		let now_secs = std::time::SystemTime::now()
-			.duration_since(std::time::UNIX_EPOCH)
-			.unwrap_or_default()
-			.as_secs();
-
+	fn difficulty(&self, parent: B::Hash, timestamp_inherent: &[u8]) -> Result<U256, PowError<B>> {
 		self.client
 			.runtime_api()
-			.realtime_difficulty(parent, now_secs)
+			.difficulty_for_block(parent, timestamp_inherent.to_vec())
 			.map_err(|err| PowError::Environment(format!(
-				"Fetching realtime difficulty from runtime failed: {err:?}"
-			)))
+				"Fetching difficulty from runtime failed: {err:?}"
+			)))?
+			.ok_or_else(|| {
+				PowError::Runtime("Block carries no valid timestamp inherent".into())
+			})
 	}
 
 	fn verify(

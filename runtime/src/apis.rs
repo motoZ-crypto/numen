@@ -23,7 +23,7 @@ use super::{
 	AccountId, Balance, Block, Ethereum, Executive, Grandpa, Historical,
 	InherentDataExt, Nonce, Runtime, RuntimeCall, RuntimeGenesisConfig, SessionKeys, System,
 	TransactionPayment, UncheckedExtrinsic, VERSION,
-	inherent_checks::check_timestamp_drift,
+	inherent_checks::{check_timestamp_drift, timestamp_from_inherent},
 };
 
 impl_runtime_apis! {
@@ -270,8 +270,13 @@ impl_runtime_apis! {
 			)
 		}
 
-		fn realtime_difficulty(now_secs: u64) -> U256 {
-			pallet_difficulty::Pallet::<Runtime>::realtime_difficulty(now_secs)
+		fn realtime_difficulty(block_timestamp_secs: u64) -> U256 {
+			pallet_difficulty::Pallet::<Runtime>::realtime_difficulty(block_timestamp_secs)
+		}
+
+		fn difficulty_for_block(timestamp_inherent: Vec<u8>) -> Option<U256> {
+			let now_ms = timestamp_from_inherent(&timestamp_inherent)?;
+			Some(pallet_difficulty::Pallet::<Runtime>::realtime_difficulty(now_ms / 1000))
 		}
 	}
 

@@ -160,21 +160,12 @@ where
 			},
 		};
 
-		// Pre-check against the same realtime difficulty import recomputes.
-		let difficulty = match self.algorithm.difficulty(metadata.best_hash) {
-			Ok(difficulty) => difficulty,
-			Err(err) => {
-				warn!(target: LOG_TARGET, "Unable to import mined block: {}", err,);
-				return false;
-			},
-		};
-
 		match self.algorithm.verify(
 			&BlockId::Hash(metadata.best_hash),
 			&metadata.pre_hash,
 			metadata.pre_runtime.as_ref().map(|v| &v[..]),
 			&seal,
-			difficulty,
+			metadata.difficulty,
 		) {
 			Ok(true) => (),
 			Ok(false) => {
@@ -325,7 +316,11 @@ mod tests {
 	impl PowAlgorithm<Block> for AcceptAll {
 		type Difficulty = U256;
 
-		fn difficulty(&self, _parent: H256) -> Result<U256, Error<Block>> {
+		fn difficulty(
+			&self,
+			_parent: H256,
+			_timestamp_inherent: &[u8],
+		) -> Result<U256, Error<Block>> {
 			Ok(U256::zero())
 		}
 
