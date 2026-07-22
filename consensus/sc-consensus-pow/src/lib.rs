@@ -86,6 +86,8 @@ pub enum Error<B: BlockT> {
 	CheckInherentsUnknownError(sp_inherents::InherentIdentifier),
 	#[error("Multiple pre-runtime digests")]
 	MultiplePreRuntimeDigests,
+	#[error("Block carries no timestamp inherent to derive difficulty from")]
+	MissingTimestampInherent,
 	#[error(transparent)]
 	Client(sp_blockchain::Error),
 	#[error(transparent)]
@@ -209,11 +211,14 @@ pub trait PowAlgorithm<B: BlockT> {
 	/// Difficulty for the algorithm.
 	type Difficulty: TotalDifficulty + Default + Encode + Decode + Ord + Clone + Copy;
 
-	/// Get the next block's difficulty.
+	/// Returns the difficulty the given block must satisfy.
 	///
-	/// This function will be called twice during the import process, so the implementation
-	/// should be properly cached.
-	fn difficulty(&self, parent: B::Hash) -> Result<Self::Difficulty, Error<B>>;
+	/// The clock is the block's own, so verdicts match across nodes and replays.
+	fn difficulty(
+		&self,
+		parent: B::Hash,
+		timestamp_inherent: &[u8],
+	) -> Result<Self::Difficulty, Error<B>>;
 	/// Verify that the seal is valid against given pre hash when parent block is not yet imported.
 	///
 	/// None means that preliminary verify is not available for this algorithm.
@@ -384,8 +389,13 @@ where
 
 		let inner_seal = fetch_seal::<B>(block.post_digests.last(), block.header.hash())?;
 
-		// Recompute difficulty from the parent at import, not from the block or submitter.
-		let difficulty = self.algorithm.difficulty(parent_hash)?;
+		let timestamp_inherent = block
+			.body
+			.as_ref()
+			.and_then(|body| body.first())
+			.ok_or(Error::<B>::MissingTimestampInherent)?
+			.encode();
+		let difficulty = self.algorithm.difficulty(parent_hash, &timestamp_inherent)?;
 
 		let pre_hash = block.header.hash();
 		let pre_digest = find_pre_digest::<B>(&block.header)?;
@@ -591,19 +601,6 @@ where
 			// miners keep getting a recent timestamp. on_build stacks it next to
 			// the head's earlier tasks instead of replacing them.
 
-			let difficulty = match algorithm.difficulty(best_hash) {
-				Ok(x) => x,
-				Err(err) => {
-					warn!(
-						target: LOG_TARGET,
-						"Unable to propose new block for authoring. \
-						 Fetch difficulty failed: {}",
-						err,
-					);
-					continue;
-				},
-			};
-
 			let inherent_data_providers = match create_inherent_data_providers
 				.create_inherent_data_providers(best_hash, ())
 				.await
@@ -669,6 +666,31 @@ where
 						target: LOG_TARGET,
 						"Unable to propose new block for authoring. \
 						 Creating proposal failed: {}",
+						err,
+					);
+					continue;
+				},
+			};
+
+			let timestamp_inherent = match proposal.block.extrinsics().first() {
+				Some(extrinsic) => extrinsic.encode(),
+				None => {
+					warn!(
+						target: LOG_TARGET,
+						"Unable to propose new block for authoring. \
+						 Proposal carries no timestamp inherent",
+					);
+					continue;
+				},
+			};
+
+			let difficulty = match algorithm.difficulty(best_hash, &timestamp_inherent) {
+				Ok(x) => x,
+				Err(err) => {
+					warn!(
+						target: LOG_TARGET,
+						"Unable to propose new block for authoring. \
+						 Fetch difficulty failed: {}",
 						err,
 					);
 					continue;

@@ -1,6 +1,21 @@
+use codec::Decode;
+use crate::{RuntimeCall, UncheckedExtrinsic};
 
 /// Maximum allowed timestamp drift from the node's local clock (milliseconds).
 pub const MAX_TIMESTAMP_DRIFT_MS: u64 = 2_000;
+
+/// Reads the timestamp out of an encoded timestamp inherent, in milliseconds.
+///
+/// Anything else yields `None`, leaving the block with no clock for its difficulty.
+pub fn timestamp_from_inherent(encoded: &[u8]) -> Option<u64> {
+	// `fp_self_contained::UncheckedExtrinsic` wraps `generic::UncheckedExtrinsic`,
+	// hence the `.0`.
+	let extrinsic = UncheckedExtrinsic::decode(&mut &encoded[..]).ok()?;
+	match extrinsic.0.function {
+		RuntimeCall::Timestamp(pallet_timestamp::Call::set { now }) => Some(now),
+		_ => None,
+	}
+}
 
 /// Validate block timestamp against drift limits.
 ///
@@ -30,7 +45,27 @@ pub fn check_timestamp_drift(
 #[cfg(test)]
 mod tests {
 	use super::*;
+	use codec::Encode;
 	use sp_inherents::CheckInherentsResult;
+
+	#[test]
+	fn reads_a_timestamp_inherent() {
+		let call = RuntimeCall::Timestamp(pallet_timestamp::Call::set { now: 123_000 });
+		let extrinsic = UncheckedExtrinsic::new_bare(call);
+		assert_eq!(timestamp_from_inherent(&extrinsic.encode()), Some(123_000));
+	}
+
+	#[test]
+	fn rejects_a_call_that_is_not_the_timestamp() {
+		let call = RuntimeCall::System(frame_system::Call::remark { remark: Default::default() });
+		let extrinsic = UncheckedExtrinsic::new_bare(call);
+		assert_eq!(timestamp_from_inherent(&extrinsic.encode()), None);
+	}
+
+	#[test]
+	fn rejects_bytes_that_are_not_an_extrinsic() {
+		assert_eq!(timestamp_from_inherent(&[0xff, 0xff, 0xff]), None);
+	}
 
 	fn run(block_ts_ms: u64, node_ts_ms: u64, parent_ts_ms: u64) -> CheckInherentsResult {
 		let mut result = CheckInherentsResult::new();

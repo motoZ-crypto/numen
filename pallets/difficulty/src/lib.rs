@@ -9,6 +9,8 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
+extern crate alloc;
+
 pub use pallet::*;
 
 pub mod asert;
@@ -26,11 +28,17 @@ sp_api::decl_runtime_apis! {
 		/// target_block_time, halflife).
 		fn anchor_params() -> (sp_core::U256, u64, u64, u64, u64);
 
-		/// Compute difficulty given an external timestamp (seconds since
-		/// Unix epoch).  This allows the caller to supply the current
-		/// wall-clock time so that difficulty decays in real time even
-		/// when no blocks are being produced.
-		fn realtime_difficulty(now_secs: u64) -> sp_core::U256;
+		/// Computes the difficulty a block with the given timestamp must satisfy.
+		///
+		/// Recomputed from the ASERT anchor rather than read off `CurrentDifficulty`,
+		/// which only holds what the last block settled on. Pass the current time to get
+		/// the difficulty right now.
+		fn realtime_difficulty(block_timestamp_secs: u64) -> sp_core::U256;
+
+		/// Computes a block's difficulty from its timestamp inherent.
+		///
+		/// `None` on a malformed inherent leaves the block unverifiable, so invalid.
+		fn difficulty_for_block(timestamp_inherent: alloc::vec::Vec<u8>) -> Option<sp_core::U256>;
 	}
 }
 
@@ -210,11 +218,12 @@ use frame_support::pallet_prelude::Get;
 use sp_core::U256;
 
 impl<T: pallet::Config> Pallet<T> {
-	/// Compute difficulty given an external wall-clock timestamp (seconds).
+	/// Computes the difficulty a block with the given timestamp must satisfy.
 	///
-	/// When `now_secs` is the current system time, this returns the
-	/// difficulty that naturally decays even if no blocks are produced.
-	pub fn realtime_difficulty(now_secs: u64) -> U256 {
+	/// Recomputed from the ASERT anchor rather than read off `CurrentDifficulty`,
+	/// which only holds what the last block settled on. Pass the current time to get
+	/// the difficulty right now.
+	pub fn realtime_difficulty(block_timestamp_secs: u64) -> U256 {
 		let current_height: u64 = frame_system::Pallet::<T>::block_number()
 			.try_into()
 			.unwrap_or(u64::MAX);
@@ -224,7 +233,7 @@ impl<T: pallet::Config> Pallet<T> {
 		let anchor_target = AnchorTarget::<T>::get();
 
 		let height_delta = next_height.saturating_sub(anchor_height);
-		let time_delta = (now_secs as i128) - (anchor_ts as i128);
+		let time_delta = (block_timestamp_secs as i128) - (anchor_ts as i128);
 
 		let next_target = crate::asert::compute_next_target(
 			anchor_target,
