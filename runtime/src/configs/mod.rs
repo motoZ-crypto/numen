@@ -23,7 +23,7 @@ use pallet_session::PeriodicSessions;
 use pallet_transaction_payment::{FungibleAdapter, Multiplier, TargetedFeeAdjustment};
 use scale_info::TypeInfo;
 use sp_runtime::{
-	traits::{AccountIdConversion, BlakeTwo256, ConvertInto, IdentityLookup},
+	traits::{AccountIdConversion, BlakeTwo256, ConvertInto, IdentityLookup, Verify},
 	FixedPointNumber, Perbill, Permill, Perquintill,
 };
 use sp_version::RuntimeVersion;
@@ -35,8 +35,8 @@ pub mod governance;
 use super::{
 	AccountId, Balance, Balances, Block, BlockNumber, Bounties, ChildBounties, Hash, Nonce,
 	OriginCaller, PalletInfo, Preimage, Runtime, RuntimeCall, RuntimeEvent, RuntimeFreezeReason,
-	RuntimeHoldReason, RuntimeOrigin, RuntimeTask, Session, SessionKeys, System, Treasury,
-	Validator, EXISTENTIAL_DEPOSIT, UNIT, VERSION, DAYS, MINUTES
+	RuntimeHoldReason, RuntimeOrigin, RuntimeTask, Session, SessionKeys, Signature, System,
+	Treasury, Validator, EXISTENTIAL_DEPOSIT, UNIT, VERSION, DAYS, MINUTES
 };
 
 pub(crate) const NORMAL_DISPATCH_RATIO: Perbill = Perbill::from_percent(75);
@@ -754,4 +754,43 @@ impl pallet_preimage::Config for Runtime {
 		PreimageHoldReason,
 		LinearStoragePrice<PreimageBaseDeposit, PreimageByteDeposit, Balance>,
 	>;
+}
+
+parameter_types! {
+	/// Held for the fixed part of a `Registration` outside its `IdentityInfo`,
+	/// 17 bytes at the 0.01 NUMN per byte storage price plus the 5 NUMN storage
+	/// entry base shared with multisig and proxy.
+	pub const IdentityBasicDeposit: Balance = 5 * UNIT + 17 * UNIT / 100;
+	/// Priced per encoded byte of the `IdentityInfo` itself, at the same
+	/// 0.01 NUMN per byte.
+	pub const IdentityByteDeposit: Balance = UNIT / 100;
+	/// A username adds 32 bytes of on-chain state.
+	pub const UsernameDeposit: Balance = 32 * UNIT / 100;
+	/// A sub-account adds 53 bytes across two trie items.
+	pub const SubAccountDeposit: Balance = 5 * UNIT + 53 * UNIT / 100;
+}
+
+impl pallet_identity::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type Currency = Balances;
+	type BasicDeposit = IdentityBasicDeposit;
+	type ByteDeposit = IdentityByteDeposit;
+	type UsernameDeposit = UsernameDeposit;
+	type SubAccountDeposit = SubAccountDeposit;
+	type MaxSubAccounts = ConstU32<100>;
+	type IdentityInformation = pallet_identity::legacy::IdentityInfo<ConstU32<4>>;
+	type MaxRegistrars = ConstU32<20>;
+	type Slashed = Treasury;
+	type ForceOrigin = pallet_prime::EnsurePrime<Runtime>;
+	type RegistrarOrigin = pallet_prime::EnsurePrime<Runtime>;
+	type OffchainSignature = Signature;
+	type SigningPublicKey = <Signature as Verify>::Signer;
+	type UsernameAuthorityOrigin = pallet_prime::EnsurePrime<Runtime>;
+	type PendingUsernameExpiration = ConstU32<{ 7 * DAYS }>;
+	type UsernameGracePeriod = ConstU32<{ 30 * DAYS }>;
+	type MaxSuffixLength = ConstU32<7>;
+	type MaxUsernameLength = ConstU32<32>;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = ();
+	type WeightInfo = pallet_identity::weights::SubstrateWeight<Runtime>;
 }

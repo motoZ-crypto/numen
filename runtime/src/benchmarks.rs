@@ -15,4 +15,5 @@ frame_benchmarking::define_benchmarks!(
 	[pallet_utility, Utility]
 	[pallet_proxy, Proxy]
 	[pallet_vesting, Vesting]
+	[pallet_identity, Identity]
 );

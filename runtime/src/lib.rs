@@ -292,6 +292,9 @@ mod runtime {
 
 	#[runtime::pallet_index(28)]
 	pub type Vesting = pallet_vesting;
+	
+	#[runtime::pallet_index(29)]
+	pub type Identity = pallet_identity;
 }
 
 // pallet-im-online submits unsigned heartbeat extrinsics from offchain
