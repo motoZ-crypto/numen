@@ -14,4 +14,5 @@ frame_benchmarking::define_benchmarks!(
 	[pallet_multisig, Multisig]
 	[pallet_utility, Utility]
 	[pallet_proxy, Proxy]
+	[pallet_vesting, Vesting]
 );

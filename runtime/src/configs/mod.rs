@@ -6,7 +6,7 @@ use frame_support::{
 		fungible::{Balanced, Credit, HoldConsideration},
 		tokens::{PayFromAccount, UnityAssetBalanceConversion},
 		ConstU128, ConstU32, ConstU64, ConstU8, Contains, EqualPrivilegeOnly, InstanceFilter,
-		LinearStoragePrice, OnUnbalanced, VariantCountOf,
+		LinearStoragePrice, OnUnbalanced, VariantCountOf, WithdrawReasons,
 	},
 	weights::{
 		constants::{RocksDbWeight, WEIGHT_REF_TIME_PER_SECOND},
@@ -273,9 +273,14 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 			// EVM entry points move native balance as well, so they are
 			// fenced off together with direct transfers. Nested calls in a
 			// utility batch inherit this filter through the origin.
+			// `vested_transfer` is the only vesting call that moves funds, the
+			// rest only rewrite locks on an account that already holds them.
 			ProxyType::NonTransfer => !matches!(
 				c,
-				RuntimeCall::Balances(..) | RuntimeCall::EVM(..) | RuntimeCall::Ethereum(..)
+				RuntimeCall::Balances(..)
+					| RuntimeCall::EVM(..)
+					| RuntimeCall::Ethereum(..)
+					| RuntimeCall::Vesting(pallet_vesting::Call::vested_transfer { .. })
 			),
 			ProxyType::Governance => matches!(
 				c,
@@ -314,6 +319,27 @@ impl pallet_proxy::Config for Runtime {
 	type AnnouncementDepositBase = AnnouncementDepositBase;
 	type AnnouncementDepositFactor = AnnouncementDepositFactor;
 	type BlockNumberProvider = System;
+}
+
+parameter_types! {
+	/// A grant small enough to fall under this is not worth the storage a
+	/// schedule costs. One NUMN is a million times the existential deposit.
+	pub const MinVestedTransfer: Balance = UNIT;
+	/// Unvested funds still pay fees and back governance deposits. Only moving
+	/// them out of the account is fenced off.
+	pub UnvestedFundsAllowedWithdrawReasons: WithdrawReasons =
+		WithdrawReasons::except(WithdrawReasons::TRANSFER | WithdrawReasons::RESERVE);
+}
+
+impl pallet_vesting::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type Currency = Balances;
+	type BlockNumberToBalance = ConvertInto;
+	type MinVestedTransfer = MinVestedTransfer;
+	type UnvestedFundsAllowedWithdrawReasons = UnvestedFundsAllowedWithdrawReasons;
+	type BlockNumberProvider = System;
+	type WeightInfo = pallet_vesting::weights::SubstrateWeight<Runtime>;
+	const MAX_VESTING_SCHEDULES: u32 = 28;
 }
 
 impl pallet_difficulty::Config for Runtime {
