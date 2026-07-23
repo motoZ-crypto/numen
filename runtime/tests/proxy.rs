@@ -55,6 +55,26 @@ fn remark_call() -> RuntimeCall {
 	RuntimeCall::System(frame_system::Call::remark { remark: Vec::new() })
 }
 
+fn vested_transfer_call(dest: &AccountId) -> RuntimeCall {
+	RuntimeCall::Vesting(pallet_vesting::Call::vested_transfer {
+		target: src(dest),
+		schedule: pallet_vesting::VestingInfo::new(UNIT, UNIT, 0),
+	})
+}
+
+fn vest_calls() -> Vec<RuntimeCall> {
+	vec![
+		RuntimeCall::Vesting(pallet_vesting::Call::vest {}),
+		RuntimeCall::Vesting(pallet_vesting::Call::vest_other {
+			target: src(&Sr25519Keyring::Bob.to_account_id()),
+		}),
+		RuntimeCall::Vesting(pallet_vesting::Call::merge_schedules {
+			schedule1_index: 0,
+			schedule2_index: 1,
+		}),
+	]
+}
+
 fn governance_whitelist(voter: &AccountId) -> Vec<RuntimeCall> {
 	vec![
 		RuntimeCall::Treasury(pallet_treasury::Call::remove_approval { proposal_id: 0 }),
@@ -79,7 +99,12 @@ fn governance_whitelist(voter: &AccountId) -> Vec<RuntimeCall> {
 #[test]
 fn non_transfer_blocks_every_fund_moving_entry() {
 	let dest = Sr25519Keyring::Bob.to_account_id();
-	for call in [transfer_call(&dest), evm_withdraw_call(), ethereum_transact_call()] {
+	for call in [
+		transfer_call(&dest),
+		evm_withdraw_call(),
+		ethereum_transact_call(),
+		vested_transfer_call(&dest),
+	] {
 		assert!(
 			!ProxyType::NonTransfer.filter(&call),
 			"NonTransfer must block {call:?}",
@@ -90,7 +115,11 @@ fn non_transfer_blocks_every_fund_moving_entry() {
 #[test]
 fn non_transfer_admits_calls_that_leave_funds_alone() {
 	let voter = Sr25519Keyring::Bob.to_account_id();
-	for call in governance_whitelist(&voter).into_iter().chain([remark_call()]) {
+	let admitted = governance_whitelist(&voter)
+		.into_iter()
+		.chain(vest_calls())
+		.chain([remark_call()]);
+	for call in admitted {
 		assert!(
 			ProxyType::NonTransfer.filter(&call),
 			"NonTransfer must admit {call:?}",

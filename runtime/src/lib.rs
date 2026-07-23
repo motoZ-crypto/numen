@@ -88,7 +88,7 @@ pub const BLOCK_HASH_COUNT: BlockNumber = 2400;
 
 // Unit = the base number of indivisible units for balances
 // 18 decimals: 1 UNIT = 10^18 smallest units (consistent with EVM/ETH)
-pub const UNIT: Balance = 1_000_000_000_000_000_000;
+pub const       UNIT: Balance = 1_000_000_000_000_000_000;
 pub const MILLI_UNIT: Balance = 1_000_000_000_000_000;
 pub const MICRO_UNIT: Balance = 1_000_000_000_000;
 
@@ -287,6 +287,11 @@ mod runtime {
 
 	#[runtime::pallet_index(27)]
 	pub type Prime = pallet_prime;
+
+	// ---
+
+	#[runtime::pallet_index(28)]
+	pub type Vesting = pallet_vesting;
 }
 
 // pallet-im-online submits unsigned heartbeat extrinsics from offchain

@@ -45,6 +45,7 @@ pallet-transaction-payment.workspace = true
 pallet-treasury.workspace = true
 pallet-utility.workspace = true
 pallet-validator.workspace = true
+pallet-vesting.workspace = true
 pallet-base-fee.workspace = true
 pallet-ethereum.workspace = true
 pallet-evm.workspace = true
@@ -128,6 +129,7 @@ std = [
 	"pallet-treasury/std",
 	"pallet-utility/std",
 	"pallet-validator/std",
+	"pallet-vesting/std",
 	"pallet-base-fee/std",
 	"pallet-ethereum/std",
 	"pallet-evm/std",
@@ -191,6 +193,7 @@ runtime-benchmarks = [
 	"pallet-treasury/runtime-benchmarks",
 	"pallet-utility/runtime-benchmarks",
 	"pallet-validator/runtime-benchmarks",
+	"pallet-vesting/runtime-benchmarks",
 	"pallet-ethereum/runtime-benchmarks",
 	"pallet-evm/runtime-benchmarks",
 	"sp-runtime/runtime-benchmarks",
@@ -222,6 +225,7 @@ try-runtime = [
 	"pallet-treasury/try-runtime",
 	"pallet-utility/try-runtime",
 	"pallet-validator/try-runtime",
+	"pallet-vesting/try-runtime",
 	"pallet-base-fee/try-runtime",
 	"pallet-ethereum/try-runtime",
 	"pallet-evm/try-runtime",
