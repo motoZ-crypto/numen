@@ -16,9 +16,13 @@ use crate::icosphere::icosphere;
 use crate::rng::Rng;
 use shape::{AsteroidParams, Lobe};
 
+pub const OCTAVES: usize = 5;
+pub const NUM_CRATERS: usize = 10;
+pub const NUM_LOBES: usize = 4;
+
 /// Grow one asteroid from a seed. Shape params derive from the seed, so the same
 /// seed always reproduces the same mesh.
-pub fn asteroid(seed: u64, subdivisions: u32) -> Mesh {
+pub fn asteroid(seed: [u8; 32], subdivisions: u32) -> Mesh {
     let base = icosphere(subdivisions);
 
     let mut rng = Rng::new(seed);
@@ -35,9 +39,8 @@ pub fn asteroid(seed: u64, subdivisions: u32) -> Mesh {
     // (lower reads rounder and chubbier), small amplitude, and a positive bias.
     // They build large-scale asymmetry without poking spikes, yielding a slightly
     // lopsided rock rather than a sea urchin growing spines.
-    let num_lobes = 2 + rng.range(0.0, 3.0) as usize; // 2..=4
-    let mut lobes = Vec::with_capacity(num_lobes);
-    for _ in 0..num_lobes {
+    let mut lobes = Vec::with_capacity(NUM_LOBES);
+    for _ in 0..NUM_LOBES {
         lobes.push(Lobe {
             dir: rng.unit_vector(),
             amp: rng.range(0.08, 0.20),
@@ -49,8 +52,8 @@ pub fn asteroid(seed: u64, subdivisions: u32) -> Mesh {
     let params = AsteroidParams {
         noise_amplitude: rng.range(0.16, 0.30),
         noise_frequency: rng.range(1.1, 2.4),
-        octaves: rng.range(4.0, 6.0) as usize,
-        num_craters: rng.range(4.0, 11.0) as usize,
+        octaves: OCTAVES,
+        num_craters: NUM_CRATERS,
         axis_scale: axes,
         lobes,
         ..AsteroidParams::default()

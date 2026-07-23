@@ -11,10 +11,12 @@ pub struct Rng {
 }
 
 impl Rng {
-    /// Seed a generator. The same seed reproduces on every target.
-    pub fn new(seed: u64) -> Self {
+    /// Seed a generator. The same seed reproduces on every target. Full hash width is
+    /// deliberate. A narrow seed caps the reachable stream space, and a capped space
+    /// can be enumerated offline.
+    pub fn new(seed: [u8; 32]) -> Self {
         Rng {
-            core: Pcg64::seed_from_u64(seed),
+            core: Pcg64::from_seed(seed),
         }
     }
 
@@ -38,8 +40,12 @@ impl Rng {
         [r * libm::cos(phi), r * libm::sin(phi), z]
     }
 
-    /// A fresh u32 seed, e.g. to hand the fBm noise its own stream.
-    pub fn next_seed(&mut self) -> u32 {
-        self.core.next_u32()
+    /// A fresh seed, e.g. to hand the fBm noise its own stream.
+    pub fn next_seed(&mut self) -> [u8; 32] {
+        let mut seed = [0u8; 32];
+        for word in seed.chunks_exact_mut(8) {
+            word.copy_from_slice(&self.core.next_u64().to_le_bytes());
+        }
+        seed
     }
 }

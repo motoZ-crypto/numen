@@ -34,9 +34,10 @@ pub const TARGET_SAMPLES: usize = 4096;
 /// shortcuts.
 pub const EPS_SCALE: f64 = 1e-5;
 
-/// Domain separation prefix hashed into every work value. Any parameter change
-/// must bump it so old and new work land in disjoint spaces.
-pub const POSCAN_PROTOCOL: &[u8] = b"poscan-v1|gen=asteroid|sd=4|samp=4096|eps_scale=1e-5";
+/// Domain separation prefix. 
+/// 
+/// Any parameter change must bump it so old and new work land in disjoint spaces.
+pub const POSCAN_PROTOCOL: &[u8] = b"poscan-v2";
 
 // ── Core types (no_std) ─────────────────────────────────────────────
 
@@ -73,7 +74,7 @@ impl Compute {
 	/// generated mesh is structurally unscannable, which a valid seal never is.
 	pub fn work(&self) -> Option<H256> {
 		let features = spectral3d::scan(self.mesh(), TARGET_SAMPLES).ok()?;
-		Some(hash_buckets(&quantize(&features)))
+		Some(hash_buckets(&quantize(&features), &self.pre_hash))
 	}
 
 	/// Run the scan and bundle the resulting work into a [`Seal`].
@@ -102,15 +103,27 @@ impl From<Mesh> for WireMesh {
 	}
 }
 
-/// Derive the 64-bit generator seed from the pre-hash and nonce.
-fn derive_seed(pre_hash: &H256, nonce: &U256) -> u64 {
-	let mut buf = Vec::with_capacity(64);
-	buf.extend_from_slice(pre_hash.as_bytes());
-	buf.extend_from_slice(&nonce.encode());
-	let digest = Sha256::digest(&buf);
-	let mut head = [0u8; 8];
-	head.copy_from_slice(&digest[..8]);
-	u64::from_le_bytes(head)
+/// Derive the generator seed from the full digest, never a truncation.
+///
+/// Truncating caps the work domain at the truncated width, and a capped domain is
+/// enumerable. A miner scans it offline once, keeps the seeds whose work clears
+/// difficulty, then reaches them by hashing nonces instead of scanning. The edge
+/// follows table size and holds at every difficulty. Retargeting cannot correct
+/// for it.
+///
+/// The protocol tag goes in for the same reason it goes into the work value.
+/// Two protocol revisions sharing one seed space would share their asteroids,
+/// letting the generate and scan labour spent under one revision replay under
+/// the other for the price of one bucket hash.
+fn derive_seed(pre_hash: &H256, nonce: &U256) -> [u8; 32] {
+	let mut hasher = Sha256::new();
+	hasher.update(POSCAN_PROTOCOL);
+	hasher.update([0u8]);
+	hasher.update(pre_hash.as_bytes());
+	hasher.update(nonce.encode());
+	let mut seed = [0u8; 32];
+	seed.copy_from_slice(&hasher.finalize());
+	seed
 }
 
 /// Fine quantize the raw spectral features into the integer bucket vector.
@@ -123,10 +136,15 @@ fn quantize(features: &[f64; N_FEATURES]) -> [i64; N_FEATURES] {
 }
 
 /// Hash the bucket vector into the work value, prefixed for domain separation.
-fn hash_buckets(buckets: &[i64; N_FEATURES]) -> H256 {
+///
+/// The pre-hash goes in directly, not only through the seed. Work stays
+/// block-specific even if a later generator narrows its state, so a scanned seed
+/// table never outlives one block.
+fn hash_buckets(buckets: &[i64; N_FEATURES], pre_hash: &H256) -> H256 {
 	let mut hasher = Sha256::new();
 	hasher.update(POSCAN_PROTOCOL);
 	hasher.update([0u8]);
+	hasher.update(pre_hash.as_bytes());
 	for &bucket in buckets {
 		hasher.update(bucket.to_le_bytes());
 	}

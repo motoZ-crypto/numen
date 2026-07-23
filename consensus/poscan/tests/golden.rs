@@ -16,10 +16,10 @@ use primitive_types::{H256, U256};
 
 /// (pre_hash low u64, nonce, lowercase hex of `s`). The value that goes on chain.
 const WORK_GOLDEN: [(u64, u64, &str); 4] = [
-	(0x0, 0x0, "5cea70c24b6ff7d7761e8817f63e1068baeeabb132fb08c918159127243bac8d"),
-	(0x1, 0x1, "864d75aa5b4599aa6cf29a8c76681c800d8177efd0a209c492324b4a84eb6961"),
-	(0x2a, 0x2a, "0f155bccfa1c57143c04e47f9affec27a84a828e75da5fd4ff8422919c6649b6"),
-	(0xdead_beef, 0xdead_beef, "55657c14aefeb8dffd90838e78dbc059f152cdff13ba3d280acccaaf44fcba2c"),
+	(0x0, 0x0, "c851199f0acde97f70b6403352528bad1cff470a6a2ab7d2623f035a8e2f4e43"),
+	(0x1, 0x1, "e659f06f2083dae275d31cb5f4bc46c0941bf508e3a45a835dc3d46f9c89fa0c"),
+	(0x2a, 0x2a, "0fb71e69fd2b6404247453ea052dc8466e94593bf5d052fe3639cc8fa7278f11"),
+	(0xdead_beef, 0xdead_beef, "a9aed2df79ebb3816bc9efa047eadba5e7f5c8a8c9e3db3961fe154b12412f51"),
 ];
 
 fn work_of(pre: u64, nonce: u64) -> H256 {

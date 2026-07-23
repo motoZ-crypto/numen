@@ -16,10 +16,9 @@ pub struct Fbm {
 }
 
 impl Fbm {
-    /// Build from a 32-bit seed. The seed drives a Fisher-Yates shuffle of the
-    /// permutation table, so neighbouring seeds give decorrelated fields, not a
-    /// shifted copy of one.
-    pub fn new(seed: u32, octaves: usize, frequency: f64) -> Self {
+    /// The seed drives a Fisher-Yates shuffle of the permutation table, so
+    /// neighbouring seeds give decorrelated fields, not a shifted copy of one.
+    pub fn new(seed: [u8; 32], octaves: usize, frequency: f64) -> Self {
         Fbm {
             perm: shuffled_perm(seed),
             octaves,
@@ -97,8 +96,8 @@ impl Fbm {
 
 /// A seed-specific permutation of 0..256, mirrored into 512 so corner lookups never
 /// need a wrap-around mask.
-fn shuffled_perm(seed: u32) -> [u8; 512] {
-    let mut rng = Rng::new(seed as u64);
+fn shuffled_perm(seed: [u8; 32]) -> [u8; 512] {
+    let mut rng = Rng::new(seed);
     let mut p = [0u8; 256];
     for (i, slot) in p.iter_mut().enumerate() {
         *slot = i as u8;

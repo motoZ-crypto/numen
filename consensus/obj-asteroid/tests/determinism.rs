@@ -8,6 +8,14 @@
 use obj_asteroid::asteroid;
 use obj_asteroid::Mesh;
 
+/// Widen a compact vector label to full seed width. Keeps the tables readable
+/// without 32 byte literals.
+fn seed(label: u64) -> [u8; 32] {
+    let mut bytes = [0u8; 32];
+    bytes[..8].copy_from_slice(&label.to_le_bytes());
+    bytes
+}
+
 /// FNV-1a over a byte stream, self-contained on purpose. A std hasher's output can
 /// drift across toolchains and move the goalposts under us.
 fn fnv1a(bytes: &[u8]) -> u64 {
@@ -36,25 +44,38 @@ fn mesh_fingerprint(mesh: &Mesh) -> u64 {
     fnv1a(&buf)
 }
 
-/// (seed, subdivisions, mesh fingerprint). Subdivision 4 is the on-chain mining
+/// (seed label, subdivisions, mesh fingerprint). Subdivision 4 is the on-chain mining
 /// resolution, frozen here beside the lighter level the seam tests exercise.
 const MESH_GOLDEN: [(u64, u32, u64); 8] = [
-    (0x0, 3, 0xb192d0954cf2ad83),
-    (0x1, 3, 0xf5c3672f25b02031),
-    (0x2a, 3, 0xa4f06fe37253ce42),
-    (0xdead_beef, 3, 0xa0b0d08c5deafe5c),
-    (0x0, 4, 0x8291dee3ea07baa0),
-    (0x1, 4, 0x56c2a257a4f6cb55),
-    (0x2a, 4, 0x0c78e63b5245717d),
-    (0xdead_beef, 4, 0x2547477c49d8ea72),
+    (0x0, 3, 0x60eece03403261ce),
+    (0x1, 3, 0x63f00c5d8eea8791),
+    (0x2a, 3, 0xbfc876e62d6cef68),
+    (0xdead_beef, 3, 0x1ceba8fc054c6bb8),
+    (0x0, 4, 0x25dd32a1cc684937),
+    (0x1, 4, 0x0f6892f5698f0014),
+    (0x2a, 4, 0xcdccf22dc20a0aa8),
+    (0xdead_beef, 4, 0x5cf92daacd522599),
 ];
 
 #[test]
 fn mesh_golden_vectors() {
-    for (seed, sub, want) in MESH_GOLDEN {
-        let got = mesh_fingerprint(&asteroid(seed, sub));
-        assert_eq!(got, want, "seed={seed:#x} sub={sub}: mesh drifted, got 0x{got:016x}");
+    for (label, sub, want) in MESH_GOLDEN {
+        let got = mesh_fingerprint(&asteroid(seed(label), sub));
+        assert_eq!(got, want, "seed={label:#x} sub={sub}: mesh drifted, got 0x{got:016x}");
     }
+}
+
+/// Two seeds differing only outside the low 8 bytes must grow different bodies. A
+/// generator that folds the seed down to a narrow word collapses them onto one mesh.
+/// That caps the work domain at the narrow width, which puts it in reach of an
+/// offline scan.
+#[test]
+fn the_whole_seed_reaches_the_mesh() {
+    let mut low = [0u8; 32];
+    low[0] = 1;
+    let mut high = low;
+    high[31] = 1;
+    assert_ne!(mesh_fingerprint(&asteroid(low, 3)), mesh_fingerprint(&asteroid(high, 3)));
 }
 
 /// A seed must land on the same mesh every call. Guards against nondeterminism a
@@ -62,8 +83,8 @@ fn mesh_golden_vectors() {
 /// hashed one.
 #[test]
 fn reproducible() {
-    let a = asteroid(7, 3);
-    let b = asteroid(7, 3);
+    let a = asteroid(seed(7), 3);
+    let b = asteroid(seed(7), 3);
     assert_eq!(mesh_fingerprint(&a), mesh_fingerprint(&b));
 }
 
@@ -74,7 +95,7 @@ fn reproducible() {
 #[test]
 #[ignore]
 fn regenerate() {
-    for (seed, sub, _) in MESH_GOLDEN {
-        println!("({seed:#x}, {sub}, 0x{:016x}),", mesh_fingerprint(&asteroid(seed, sub)));
+    for (label, sub, _) in MESH_GOLDEN {
+        println!("({label:#x}, {sub}, 0x{:016x}),", mesh_fingerprint(&asteroid(seed(label), sub)));
     }
 }
