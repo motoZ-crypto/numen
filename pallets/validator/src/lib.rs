@@ -1,8 +1,7 @@
 //! # Pallet Validator
 //!
 //! Manages the full lifecycle of validators: lock, auto-renewal, exit,
-//! and kick. This crate currently provides the storage, event, and error
-//! skeleton.
+//! and kick.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
@@ -17,7 +16,7 @@ extern crate alloc;
 
 use codec::{Decode, DecodeWithMemTracking, Encode, MaxEncodedLen};
 use frame_support::{
-    traits::{Contains, Currency, Get, LockableCurrency},
+    traits::{Currency, Get, LockableCurrency},
     BoundedVec,
 };
 use scale_info::TypeInfo;
@@ -71,7 +70,7 @@ pub mod pallet {
     use super::*;
     use frame_support::{
         pallet_prelude::*,
-        traits::{Defensive, LockIdentifier, WithdrawReasons},
+        traits::{Contains, Defensive, LockIdentifier, WithdrawReasons},
     };
     use frame_system::pallet_prelude::*;
 
@@ -101,8 +100,13 @@ pub mod pallet {
         #[pallet::constant]
         type LockAmount: Get<BalanceOf<Self>>;
 
-        /// Accounts that validate without locking stake.
-        type StakeExempt: Contains<Self::AccountId>;
+        /// Origin allowed to manage [`StakeExemptAccounts`].
+        type ExemptOrigin: EnsureOrigin<Self::RuntimeOrigin>;
+
+        /// Identity requirement every candidate must pass to join via `lock`.
+        /// Stake exemption does not bypass it. Genesis appointment does, along
+        /// with every other join condition.
+        type IdentityGate: Contains<Self::AccountId>;
 
         /// Lock duration applied at registration and on each renewal.
         #[pallet::constant]
@@ -147,6 +151,12 @@ pub mod pallet {
     #[pallet::storage]
 	pub type DesiredValidators<T: Config> = StorageValue<_, BoundedVec<T::AccountId, T::MaxValidators>, ValueQuery>;
 
+    /// Accounts allowed to join the validator set without locking stake.
+    /// Consulted only when a candidate joins via `lock`; validators already
+    /// in the set keep the amount recorded at join time.
+    #[pallet::storage]
+	pub type StakeExemptAccounts<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, (), OptionQuery>;
+
     /// Rejoin cooldown deadline per account (block number).
     #[pallet::storage]
 	pub type RejoinCooldown<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, BlockNumberFor<T>, OptionQuery>;
@@ -169,6 +179,8 @@ pub mod pallet {
     /// active validator set at block 0. They are appointed by the chain spec
     /// and stake nothing. Each account still gets a lock record with a zero
     /// amount so auto-renewal, exit, and kick logic operates on real records.
+    /// Each account is also seeded into [`StakeExemptAccounts`] so it can
+    /// rejoin without stake until the exempt origin removes it.
     /// The accounts are pushed directly into `DesiredValidators` (not
     /// `PendingValidators`) so that the very first session already has a
     /// non-empty authority set for `pallet-session` and downstream consumers
@@ -202,6 +214,7 @@ pub mod pallet {
                         status: ValidatorStatus::Active,
                     },
                 );
+                StakeExemptAccounts::<T>::insert(who, ());
                 active
                     .try_push(who.clone())
                     .expect("Genesis validators exceed MaxValidators");
@@ -229,6 +242,8 @@ pub mod pallet {
         EquivocationReported { who: T::AccountId },
         /// A pending validator was dropped.
         PendingValidatorDropped { who: T::AccountId },
+        /// An account's stake exemption was granted or revoked.
+        StakeExemptSet { who: T::AccountId, exempt: bool },
     }
 
     /// Reason a validator was removed from the active set.
@@ -269,6 +284,8 @@ pub mod pallet {
         TooManyValidators,
         /// Caller has not registered session keys.
         SessionKeysNotRegistered,
+        /// Caller does not pass the configured identity gate.
+        IdentityNotQualified,
     }
 
     #[pallet::hooks]
@@ -359,6 +376,11 @@ pub mod pallet {
                 Error::<T>::SessionKeysNotRegistered,
             );
 
+            ensure!(
+                T::IdentityGate::contains(&who),
+                Error::<T>::IdentityNotQualified,
+            );
+
             let now = frame_system::Pallet::<T>::block_number();
             if let Some(deadline) = RejoinCooldown::<T>::get(&who) {
                 if deadline >= now {
@@ -440,6 +462,28 @@ pub mod pallet {
             Self::deposit_event(Event::ValidatorExitRequested { who });
             Ok(())
         }
+
+        /// Grant or revoke stake exemption for `who`.
+        ///
+        /// Idempotent so the managing origin never has to read state first.
+        /// Revoking does not touch validators already in the set; their lock
+        /// amount was fixed when they joined.
+        #[pallet::call_index(2)]
+        #[pallet::weight(Weight::from_parts(30_000_000, 0))]
+        pub fn set_stake_exempt(
+            origin: OriginFor<T>,
+            who: T::AccountId,
+            exempt: bool,
+        ) -> DispatchResult {
+            T::ExemptOrigin::ensure_origin(origin)?;
+            if exempt {
+                StakeExemptAccounts::<T>::insert(&who, ());
+            } else {
+                StakeExemptAccounts::<T>::remove(&who);
+            }
+            Self::deposit_event(Event::StakeExemptSet { who, exempt });
+            Ok(())
+        }
     }
 }
 
@@ -451,7 +495,7 @@ impl<T: Config> Pallet<T> {
     /// amount never places a currency lock because `set_lock` treats zero
     /// as removal.
     fn required_lock(who: &T::AccountId) -> BalanceOf<T> {
-        if T::StakeExempt::contains(who) {
+        if StakeExemptAccounts::<T>::contains_key(who) {
             Zero::zero()
         } else {
             T::LockAmount::get()

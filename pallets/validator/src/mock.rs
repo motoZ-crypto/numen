@@ -76,10 +76,17 @@ impl SessionInterface<AccountId> for MockSession {
 	}
 }
 
-pub struct MockStakeExempt;
-impl Contains<AccountId> for MockStakeExempt {
+parameter_types! {
+	pub static UnqualifiedIdentities: alloc::collections::BTreeSet<AccountId> =
+		alloc::collections::BTreeSet::new();
+}
+
+/// Mock identity gate whose verdict is driven by the `UnqualifiedIdentities`
+/// static, allowing tests to flip the response per case.
+pub struct MockIdentityGate;
+impl Contains<AccountId> for MockIdentityGate {
 	fn contains(who: &AccountId) -> bool {
-		*who == EXEMPT
+		!UnqualifiedIdentities::get().contains(who)
 	}
 }
 
@@ -87,7 +94,8 @@ impl pallet_validator::Config for Test {
 	type Currency = Balances;
 	type SessionInterface = MockSession;
 	type LockAmount = ConstU128<1_000>;
-	type StakeExempt = MockStakeExempt;
+	type ExemptOrigin = frame_system::EnsureRoot<AccountId>;
+	type IdentityGate = MockIdentityGate;
 	type LockDuration = ConstU64<10>;
 	type SessionPeriod = ConstU64<5>;
 	type SessionOffset = ConstU64<0>;

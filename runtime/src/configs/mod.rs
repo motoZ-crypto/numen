@@ -5,7 +5,7 @@ use frame_support::{
 	traits::{
 		fungible::{Balanced, Credit, HoldConsideration},
 		tokens::{PayFromAccount, UnityAssetBalanceConversion},
-		ConstU128, ConstU32, ConstU64, ConstU8, Contains, EqualPrivilegeOnly, InstanceFilter,
+		ConstU128, ConstU32, ConstU64, ConstU8, EqualPrivilegeOnly, InstanceFilter,
 		LinearStoragePrice, OnUnbalanced, VariantCountOf, WithdrawReasons,
 	},
 	weights::{
@@ -18,7 +18,6 @@ use frame_system::{
 	limits::{BlockLength, BlockWeights},
 	EnsureRoot,
 };
-use hex_literal::hex;
 use pallet_session::PeriodicSessions;
 use pallet_transaction_payment::{FungibleAdapter, Multiplier, TargetedFeeAdjustment};
 use scale_info::TypeInfo;
@@ -430,42 +429,6 @@ parameter_types! {
 	pub const ValidatorLockId: frame_support::traits::LockIdentifier = *b"validatr";
 }
 
-/// Validator accounts allowed to join without locking stake.
-pub struct StakeExemptAccounts;
-
-impl Contains<AccountId> for StakeExemptAccounts {
-	fn contains(who: &AccountId) -> bool {
-		STAKE_EXEMPT_ACCOUNTS.iter().any(|k| who == &AccountId::from(*k))
-	}
-}
-
-const STAKE_EXEMPT_ACCOUNTS: [[u8; 32]; 12] = [
-	// nu5WR2b5yFx6zUPudqfJtfnmDpg45PFafTFp5iwxH2bdKiqnW
-	hex!("7ebc23de675cd320952153f65eed8636ede3ee914d38d86a03b8690c5ef87745"),
-	// nu8FjWHe9eBn1oR9N7xADxKKTSpDMkYwocg9sPNBzXFxN1NoZ
-	hex!("f83e5c47238ae444ef3165741b0c2a26a15bfb910655376680dc86d47032ee71"),
-	// nu6Gk7pfM9Sxp19o64d5tP1pvGfkWELvk4t9C6d7AWaLjc1gN
-	hex!("a08b338e366fdd4d7a4e66cd6ff1c8fe3f8d8b58f72ea980938612df2a12cb2f"),
-	// nu6davM837qycpvwZ5WxDFn3U9NWxHYLLWwkT3DzsyGMv6nyk
-	hex!("b0706466389590c5e85c2536368db64510bea6def16ac1ac096e754342476f63"),
-	// nu6DhnACdsRfJXMBMG1VDZzTWYPCGvZhy6T6oo8LK1iZsjj9p
-	hex!("9e399761be3d62aff2f2496882f35e719a7d26e6e34964a8691507b7be44e436"),
-	// nu5jPGTWz3LigxmaYgxhnWDc4QEHCC3HMT661gB8ofHvAEPWs
-	hex!("88a0671aa30b1b6199ff5ac847d7ec059ec7bf7baf57b7c47aced431704a5333"),
-	// nu6GtAuvYCiCUy7PmqsLycXdRBdP63aeehug8EFkY9aE2Kj7y
-	hex!("a0a64fa9165f3f5115cd4c2e056f06531d9d9411aaaacf452625bd0623cc0d79"),
-	// nu2noBaVTbqQ4qxh3Smb8z77LsYaTRfQhgK9tsQqfv7tHm2VF
-	hex!("0685f2537b8dd8efa5eef6c2d7d95484b7e804559e0c2308708bfbd4c1ae0723"),
-	// nu8KAW3iGL6ATT4Zc4pWtXXpAhr1FoRUQ3mP1d6QfN9NZfaDD
-	hex!("fadc3d802a278f17424a98cf2ed40c359d41a80a6cdfe16f20530adf3cc98006"),
-	// nu2v7qUMJ8CdTVGHWprxDcoVsrxpFE813aB1LZk5uZnCYdbRH
-	hex!("0c1b7509c3728c1c3ca068448d742c71ac656401f308aef5883311e153eddb4c"),
-	// nu4zngCeKZmRT9kxEVh8Uv6vTHw2WxrRcvkAsRs5TBnWQPMSa
-	hex!("6823a740cbaa7316bc810058581f9d0b0223226b4291ab894cdd5bd0ea3b4976"),
-	// nu3R1jsSHf5ZSJ8G6yYaFtVakPEEutA3qZgKkB8JCFaY3e1ep
-	hex!("22250d0c61bc635742f2c9f14b3630e41574d2ea8e3e4e3a5b8526ff2148566a"),
-];
-
 #[cfg(not(feature = "zombienet-runtime"))]
 parameter_types! {
 	pub const SessionPeriod: BlockNumber = 10 * MINUTES;
@@ -478,8 +441,9 @@ impl pallet_validator::Config for Runtime {
 	type SessionInterface = ValidatorSessionAdapter;
 	type SessionPeriod = SessionPeriod;
 	type SessionOffset = SessionOffset;
-	type LockAmount = ConstU128<{ 1_000_000 * UNIT }>;
-	type StakeExempt = StakeExemptAccounts;
+	type LockAmount = ConstU128<{ 100_000_000 * UNIT }>;
+	type ExemptOrigin = pallet_prime::EnsurePrime<Runtime>;
+	type IdentityGate = governance::QualifiedIdentity;
 	type LockDuration = ConstU32<{ 180 * DAYS }>;
 	type LockId = ValidatorLockId;
 	type MaxValidators = ConstU32<1_000>;
@@ -503,7 +467,8 @@ impl pallet_validator::Config for Runtime {
 	type SessionPeriod = SessionPeriod;
 	type SessionOffset = SessionOffset;
 	type LockAmount = ConstU128<{ 1 * UNIT }>;
-	type StakeExempt = StakeExemptAccounts;
+	type ExemptOrigin = pallet_prime::EnsurePrime<Runtime>;
+	type IdentityGate = governance::QualifiedIdentity;
 	type LockDuration = ConstU32<{ SessionPeriod::get() + 2 * MINUTES }>;
 	type LockId = ValidatorLockId;
 	type MaxValidators = ConstU32<4>;
