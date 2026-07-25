@@ -564,6 +564,36 @@ fn new_session_drops_pending_when_without_session_keys() {
 }
 
 #[test]
+fn dropped_pending_candidate_keeps_lock_and_stops_renewal() {
+    let lock_amount: Balance = <Test as crate::Config>::LockAmount::get();
+
+    new_test_ext(vec![(ALICE, lock_amount)]).execute_with(|| {
+        assert_ok!(Validator::lock(RuntimeOrigin::signed(ALICE)));
+        let expiry = ValidatorLocks::<Test>::get(ALICE).expect("locked").expiry_block;
+
+        // ALICE purges her session keys before the boundary can promote her.
+        MissingSessionKeys::mutate(|set| {
+            set.insert(ALICE);
+        });
+        new_session(1);
+
+        // Dropped without ever being seated, yet the stake is not handed back.
+        let lock = ValidatorLocks::<Test>::get(ALICE).expect("stake still committed");
+        assert_eq!(lock.status, ValidatorStatus::ExitRequested);
+        assert!(!pallet_balances::Locks::<Test>::get(ALICE).is_empty());
+        System::assert_last_event(Event::PendingValidatorDropped { who: ALICE }.into());
+
+        // Leaving `Active` stops auto-renewal, so the lock reaches its original
+        // expiry and clears there instead of rolling forward forever.
+        run_to_block(expiry - 1);
+        assert_eq!(ValidatorLocks::<Test>::get(ALICE).unwrap().expiry_block, expiry);
+        run_to_block(expiry);
+        assert!(ValidatorLocks::<Test>::get(ALICE).is_none());
+        assert!(pallet_balances::Locks::<Test>::get(ALICE).is_empty());
+    });
+}
+
+#[test]
 fn new_session_drops_pending_when_capacity_full() {
     let lock_amount: Balance = <Test as crate::Config>::LockAmount::get();
     let max_validators: u32 = <Test as crate::Config>::MaxValidators::get();
@@ -930,6 +960,41 @@ fn rejoin_after_exit_next_session_succeeds() {
     });
 }
 
+/// Rejoining on top of an unexpired lock must not become a way out of the
+/// time lock, however the fresh candidacy ends.
+#[test]
+fn relock_then_key_purge_keeps_lock_until_expiry() {
+    let lock_amount: Balance = <Test as crate::Config>::LockAmount::get();
+    let lock_duration: u64 = <Test as crate::Config>::LockDuration::get();
+
+    // ALICE holds exactly the stake, so recovering it needs no fresh funds.
+    new_test_ext(vec![(ALICE, lock_amount)]).execute_with(|| {
+        assert_ok!(Validator::lock(RuntimeOrigin::signed(ALICE)));
+        new_session(1);
+        assert_eq!(DesiredValidators::<Test>::get().to_vec(), vec![ALICE]);
+
+        // Exit, then a boundary drops ALICE from the active set.
+        assert_ok!(Validator::request_exit(RuntimeOrigin::signed(ALICE)));
+        new_session(2);
+        assert!(DesiredValidators::<Test>::get().is_empty());
+
+        // Rejoin over the unexpired lock, then purge the session keys so the
+        // next boundary drops the fresh candidacy.
+        assert_ok!(Validator::lock(RuntimeOrigin::signed(ALICE)));
+        MissingSessionKeys::mutate(|set| {
+            set.insert(ALICE);
+        });
+        new_session(3);
+
+        let lock = ValidatorLocks::<Test>::get(ALICE).expect("stake still committed");
+        assert_eq!(lock.amount, lock_amount);
+        assert_eq!(lock.expiry_block, 1 + lock_duration);
+        assert_eq!(lock.status, ValidatorStatus::ExitRequested);
+        assert!(System::block_number() < lock.expiry_block);
+        assert!(!pallet_balances::Locks::<Test>::get(ALICE).is_empty());
+    });
+}
+
 #[test]
 fn rejoin_after_offline_immediate_relock_rejected() {
     let lock_amount: Balance = <Test as crate::Config>::LockAmount::get();
@@ -1132,6 +1197,28 @@ fn exempt_account_locks_with_zero_balance() {
             Event::ValidatorLocked { who: EXEMPT, amount: 0, expiry_block: 1 + lock_duration }
                 .into(),
         );
+    });
+}
+
+#[test]
+fn relock_with_exemption_keeps_existing_stake_locked() {
+    let lock_amount: Balance = <Test as crate::Config>::LockAmount::get();
+
+    new_test_ext(vec![(ALICE, lock_amount)]).execute_with(|| {
+        assert_ok!(Validator::lock(RuntimeOrigin::signed(ALICE)));
+        new_session(1);
+        assert_ok!(Validator::request_exit(RuntimeOrigin::signed(ALICE)));
+        new_session(2);
+
+        // The exemption lands while the old stake is still committed. It
+        // waives fresh stake, it does not cancel a running lock.
+        assert_ok!(Validator::set_stake_exempt(RuntimeOrigin::root(), ALICE, true));
+        assert_ok!(Validator::lock(RuntimeOrigin::signed(ALICE)));
+
+        let lock = ValidatorLocks::<Test>::get(ALICE).expect("stake still committed");
+        assert_eq!(lock.amount, lock_amount);
+        assert_eq!(lock.status, ValidatorStatus::Active);
+        assert!(!pallet_balances::Locks::<Test>::get(ALICE).is_empty());
     });
 }
 

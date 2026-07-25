@@ -47,7 +47,8 @@ pub type BalanceOf<T> = <<T as Config>::Currency as Currency<<T as frame_system:
 pub enum ValidatorStatus {
     /// Active in the validator set; eligible for auto-renewal.
     Active,
-    /// Voluntary exit requested; auto-renewal stopped, awaiting expiry.
+    /// On the way out of the set, either by voluntary exit or by being
+    /// dropped before promotion. Auto-renewal stopped, awaiting expiry.
     ExitRequested,
     /// Removed from the active set due to offline or equivocation.
     /// The specific reason is conveyed by the [`pallet::KickReason`] event.
@@ -240,7 +241,8 @@ pub mod pallet {
 		LockReleased { who: T::AccountId, amount: BalanceOf<T> },
         /// A GRANDPA equivocation report was processed for an active validator.
         EquivocationReported { who: T::AccountId },
-        /// A pending validator was dropped.
+        /// A pending validator was dropped before promotion. Its stake stays
+        /// locked until expiry.
         PendingValidatorDropped { who: T::AccountId },
         /// An account's stake exemption was granted or revoked.
         StakeExemptSet { who: T::AccountId, exempt: bool },
@@ -352,6 +354,10 @@ pub mod pallet {
         ///
         /// The locked amount and duration are taken from `Config::LockAmount`
         /// and `Config::LockDuration` respectively; callers do not choose them.
+        ///
+        /// A caller whose previous lock has not expired yet may rejoin, which
+        /// refreshes that lock instead of placing a second one. The refresh
+        /// only ever tightens it, so rejoining never returns stake early.
         #[pallet::call_index(0)]
         #[pallet::weight(Weight::from_parts(50_000_000, 0))]
         pub fn lock(origin: OriginFor<T>) -> DispatchResult {
@@ -389,15 +395,25 @@ pub mod pallet {
                 RejoinCooldown::<T>::remove(&who);
             }
 
-            let amount = Self::required_lock(&who);
-            let duration = T::LockDuration::get();
+            let required = Self::required_lock(&who);
+            let fresh_expiry = now.saturating_add(T::LockDuration::get());
+
+            // Relocking refreshes an existing commitment and a refresh must
+            // never weaken it, so both fields keep whichever value binds
+            // harder. Without this, a zero required amount frees the stake
+            // outright, because `set_lock` treats zero as removal.
+            let (amount, expiry_block) = match ValidatorLocks::<T>::get(&who) {
+                Some(previous) => (
+                    previous.amount.max(required),
+                    previous.expiry_block.max(fresh_expiry),
+                ),
+                None => (required, fresh_expiry),
+            };
 
             ensure!(
                 T::Currency::free_balance(&who) >= amount,
                 Error::<T>::InsufficientBalance,
             );
-
-            let expiry_block = now.saturating_add(duration);
 
             PendingValidators::<T>::mutate(|queue| {
                 let _ = queue
@@ -491,9 +507,10 @@ pub mod pallet {
 const LOG_TARGET: &str = "runtime::validator";
 
 impl<T: Config> Pallet<T> {
-    /// Stake required from `who` when joining the validator set. A zero
-    /// amount never places a currency lock because `set_lock` treats zero
-    /// as removal.
+    /// Fresh stake `who` must put up to join the validator set. Zero for an
+    /// exempt account, which places no currency lock at all because `set_lock`
+    /// treats zero as removal. It is a floor, not the final amount, since a
+    /// rejoining account keeps whatever its unexpired lock already holds.
     fn required_lock(who: &T::AccountId) -> BalanceOf<T> {
         if StakeExemptAccounts::<T>::contains_key(who) {
             Zero::zero()
@@ -685,9 +702,16 @@ impl<T: Config> pallet_session::SessionManager<T::AccountId> for Pallet<T> {
                 .unwrap_or(false)
         };
         
-        let cancel_pending_candidate = |who: &T::AccountId| {
-            T::Currency::remove_lock(T::LockId::get(), who);
-            ValidatorLocks::<T>::remove(who);
+        // A dropped candidate keeps its stake until `expiry_block`, like every
+        // other way out of the set. Only the status has to leave `Active`,
+        // otherwise auto-renewal would keep extending a lock that no longer
+        // belongs to anyone in the set.
+        let drop_pending_candidate = |who: &T::AccountId| {
+            ValidatorLocks::<T>::mutate(who, |maybe_info| {
+                if let Some(info) = maybe_info {
+                    info.status = ValidatorStatus::ExitRequested;
+                }
+            });
             OfflineSessionCount::<T>::remove(who);
             OfflineThisSession::<T>::remove(who);
             Self::deposit_event(Event::PendingValidatorDropped { who: who.clone() });
@@ -708,7 +732,7 @@ impl<T: Config> pallet_session::SessionManager<T::AccountId> for Pallet<T> {
             }
             if !T::SessionInterface::has_keys(&who)
             || next.is_full() {
-                cancel_pending_candidate(&who);
+                drop_pending_candidate(&who);
                 continue;
             }
             let _ = next.try_push(who);
