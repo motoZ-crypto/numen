@@ -37,9 +37,9 @@ fn assert_ongoing(index: u32) {
 }
 
 /// Submit a small track referendum with its decision deposit placed, returning
-/// its index. Both deposits stay reserved on the submitter. A judged identity
-/// goes straight into storage since submission is gated on one and the gate
-/// has its own coverage.
+/// its index. Both deposits stay reserved on the submitter. A qualified
+/// identity goes straight into storage since submission is gated on one and
+/// the gate has its own coverage.
 fn ongoing_referendum(submitter: &AccountId) -> u32 {
 	Balances::set_balance(submitter, FUNDS);
 	pallet_identity::IdentityOf::<Runtime>::insert(
@@ -49,7 +49,12 @@ fn ongoing_referendum(submitter: &AccountId) -> u32 {
 				.try_into()
 				.expect("one judgement fits the bound"),
 			deposit: 0,
-			info: Default::default(),
+			info: pallet_identity::legacy::IdentityInfo {
+				twitter: pallet_identity::Data::Raw(
+					b"@submitter".to_vec().try_into().expect("handle fits the raw bound"),
+				),
+				..Default::default()
+			},
 		},
 	);
 	let index = pallet_referenda::ReferendumCount::<Runtime>::get();
