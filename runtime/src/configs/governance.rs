@@ -9,10 +9,10 @@ use crate::{
 use alloc::borrow::Cow;
 use frame_support::{
 	parameter_types,
-	traits::{AsEnsureOriginWithArg, ConstU32, EitherOf, EnsureOrigin},
+	traits::{AsEnsureOriginWithArg, ConstU32, Contains, EitherOf, EnsureOrigin},
 };
 use frame_system::{EnsureSigned, RawOrigin};
-use pallet_identity::Judgement;
+use pallet_identity::{Data, Judgement};
 use pallet_referenda::{Curve, Track, TrackInfo};
 use sp_runtime::{str_array as s, FixedI64};
 
@@ -198,31 +198,57 @@ impl pallet_custom_origins::Config for Runtime {}
 /// amount.
 pub type TreasurySpender = EitherOf<SmallSpender, EitherOf<MediumSpender, BigSpender>>;
 
-/// Referendum submission is open to any account holding an identity judged
-/// Reasonable or KnownGood. A sub account qualifies through its parent since
-/// the SuperOf link keeps the owner traceable.
-pub struct EnsureJudgedIdentity;
+/// Qualified identity standard shared by every entry point that gates on
+/// identity. An account qualifies when a registrar judged its identity
+/// Reasonable or KnownGood and the identity carries at least one social
+/// channel among x, telegram and discord registered as plaintext. Hashed
+/// channel commitments do not count since the point is public attribution.
+/// A sub account qualifies through its parent since the SuperOf link keeps
+/// the owner traceable.
+pub struct QualifiedIdentity;
 
-impl EnsureJudgedIdentity {
-	fn is_judged(who: &AccountId) -> bool {
+/// Additional field keys that count as social channels next to the native
+/// twitter field.
+const SOCIAL_CHANNEL_KEYS: [&[u8]; 2] = [b"telegram", b"discord"];
+
+fn plaintext(data: &Data) -> bool {
+	matches!(data, Data::Raw(bytes) if !bytes.is_empty())
+}
+
+impl QualifiedIdentity {
+	fn account_qualifies(who: &AccountId) -> bool {
 		pallet_identity::IdentityOf::<Runtime>::get(who).is_some_and(|registration| {
-			registration
+			let judged = registration
 				.judgements
 				.iter()
-				.any(|(_, judgement)| matches!(judgement, Judgement::Reasonable | Judgement::KnownGood))
+				.any(|(_, judgement)| matches!(judgement, Judgement::Reasonable | Judgement::KnownGood));
+			let channel = plaintext(&registration.info.twitter)
+				|| registration.info.additional.iter().any(|(key, value)| {
+					matches!(key, Data::Raw(k) if SOCIAL_CHANNEL_KEYS.contains(&k.as_slice()))
+						&& plaintext(value)
+				});
+			judged && channel
 		})
 	}
 }
 
-impl EnsureOrigin<RuntimeOrigin> for EnsureJudgedIdentity {
+impl Contains<AccountId> for QualifiedIdentity {
+	fn contains(who: &AccountId) -> bool {
+		Self::account_qualifies(who)
+			|| pallet_identity::SuperOf::<Runtime>::get(who)
+				.is_some_and(|(parent, _)| Self::account_qualifies(&parent))
+	}
+}
+
+/// Referendum submission is open to any account passing [`QualifiedIdentity`].
+pub struct EnsureQualifiedIdentity;
+
+impl EnsureOrigin<RuntimeOrigin> for EnsureQualifiedIdentity {
 	type Success = AccountId;
 
 	fn try_origin(o: RuntimeOrigin) -> Result<Self::Success, RuntimeOrigin> {
 		let who = EnsureSigned::<AccountId>::try_origin(o)?;
-		let judged = Self::is_judged(&who)
-			|| pallet_identity::SuperOf::<Runtime>::get(&who)
-				.is_some_and(|(parent, _)| Self::is_judged(&parent));
-		if judged {
+		if QualifiedIdentity::contains(&who) {
 			Ok(who)
 		} else {
 			Err(RawOrigin::Signed(who).into())
@@ -232,12 +258,16 @@ impl EnsureOrigin<RuntimeOrigin> for EnsureJudgedIdentity {
 	#[cfg(feature = "runtime-benchmarks")]
 	fn try_successful_origin() -> Result<RuntimeOrigin, ()> {
 		let who: AccountId = frame_benchmarking::whitelisted_caller();
+		let info = pallet_identity::legacy::IdentityInfo {
+			twitter: Data::Raw(b"@bench".to_vec().try_into().map_err(|_| ())?),
+			..Default::default()
+		};
 		let registration = pallet_identity::Registration {
 			judgements: alloc::vec![(0, Judgement::Reasonable)]
 				.try_into()
 				.map_err(|_| ())?,
 			deposit: 0,
-			info: Default::default(),
+			info,
 		};
 		pallet_identity::IdentityOf::<Runtime>::insert(&who, registration);
 		Ok(RawOrigin::Signed(who).into())
@@ -250,7 +280,7 @@ impl pallet_referenda::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Scheduler = Scheduler;
 	type Currency = Balances;
-	type SubmitOrigin = AsEnsureOriginWithArg<EnsureJudgedIdentity>;
+	type SubmitOrigin = AsEnsureOriginWithArg<EnsureQualifiedIdentity>;
 	type CancelOrigin = pallet_prime::EnsurePrime<Runtime>;
 	type KillOrigin = pallet_prime::EnsurePrime<Runtime>;
 	type Slash = Treasury;

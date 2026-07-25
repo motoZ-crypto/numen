@@ -153,8 +153,8 @@ fn run_to_block(n: BlockNumber) {
 /// small track bars at the first deciding block.
 fn backed_small_track_referendum(voter: &AccountId, call: RuntimeCall) -> u32 {
 	Balances::set_balance(voter, VOTER_FUNDS);
-	// Submission is gated on a judged identity, which has its own coverage, so
-	// place one straight into storage.
+	// Submission is gated on a qualified identity, which has its own coverage,
+	// so place a judged one carrying a plaintext channel straight into storage.
 	pallet_identity::IdentityOf::<Runtime>::insert(
 		voter,
 		pallet_identity::Registration {
@@ -162,7 +162,12 @@ fn backed_small_track_referendum(voter: &AccountId, call: RuntimeCall) -> u32 {
 				.try_into()
 				.expect("one judgement fits the bound"),
 			deposit: 0,
-			info: Default::default(),
+			info: pallet_identity::legacy::IdentityInfo {
+				twitter: pallet_identity::Data::Raw(
+					b"@voter".to_vec().try_into().expect("the handle fits the field bound"),
+				),
+				..Default::default()
+			},
 		},
 	);
 	let index = pallet_referenda::ReferendumCount::<Runtime>::get();
