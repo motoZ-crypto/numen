@@ -2,7 +2,7 @@ use crate as pallet_validator;
 use crate::SessionInterface;
 use frame_support::{
 	derive_impl, parameter_types,
-	traits::{ConstU128, ConstU32, ConstU64, Contains, LockIdentifier, VariantCountOf, Hooks},
+	traits::{ConstU128, ConstU32, ConstU64, LockIdentifier, VariantCountOf, Hooks},
 };
 use sp_runtime::BuildStorage;
 
@@ -76,18 +76,11 @@ impl SessionInterface<AccountId> for MockSession {
 	}
 }
 
-pub struct MockStakeExempt;
-impl Contains<AccountId> for MockStakeExempt {
-	fn contains(who: &AccountId) -> bool {
-		*who == EXEMPT
-	}
-}
-
 impl pallet_validator::Config for Test {
 	type Currency = Balances;
 	type SessionInterface = MockSession;
 	type LockAmount = ConstU128<1_000>;
-	type StakeExempt = MockStakeExempt;
+	type ExemptOrigin = frame_system::EnsureRoot<AccountId>;
 	type LockDuration = ConstU64<10>;
 	type SessionPeriod = ConstU64<5>;
 	type SessionOffset = ConstU64<0>;

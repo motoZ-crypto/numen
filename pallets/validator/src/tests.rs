@@ -1,6 +1,7 @@
 use crate::{
-    mock::*, DesiredValidators, PendingValidators, Error, Event, KickReason, LockInfo, OfflineSessionCount, 
-    OfflineThisSession, EquivocationThisSession, RejoinCooldown, ValidatorLocks, ValidatorStatus,
+    mock::*, DesiredValidators, PendingValidators, Error, Event, KickReason, LockInfo, OfflineSessionCount,
+    OfflineThisSession, EquivocationThisSession, RejoinCooldown, StakeExemptAccounts, ValidatorLocks,
+    ValidatorStatus,
 };
 use frame_support::{assert_noop, assert_ok, traits::Get};
 use sp_runtime::{traits::Dispatchable, BuildStorage, DispatchError, TokenError};
@@ -1023,10 +1024,78 @@ fn rejoin_after_equivocation_cooldown_expired_succeeds() {
 // region: stake exemption
 
 #[test]
+fn set_stake_exempt_rejects_unauthorized_origin() {
+    new_test_ext(vec![]).execute_with(|| {
+        assert_noop!(
+            Validator::set_stake_exempt(RuntimeOrigin::signed(ALICE), EXEMPT, true),
+            DispatchError::BadOrigin
+        );
+        assert!(!StakeExemptAccounts::<Test>::contains_key(EXEMPT));
+    });
+}
+
+#[test]
+fn set_stake_exempt_updates_list_and_emits_event() {
+    new_test_ext(vec![]).execute_with(|| {
+        assert_ok!(Validator::set_stake_exempt(RuntimeOrigin::root(), EXEMPT, true));
+        assert!(StakeExemptAccounts::<Test>::contains_key(EXEMPT));
+        System::assert_last_event(Event::StakeExemptSet { who: EXEMPT, exempt: true }.into());
+
+        assert_ok!(Validator::set_stake_exempt(RuntimeOrigin::root(), EXEMPT, false));
+        assert!(!StakeExemptAccounts::<Test>::contains_key(EXEMPT));
+        System::assert_last_event(Event::StakeExemptSet { who: EXEMPT, exempt: false }.into());
+    });
+}
+
+#[test]
+fn set_stake_exempt_is_idempotent() {
+    new_test_ext(vec![]).execute_with(|| {
+        assert_ok!(Validator::set_stake_exempt(RuntimeOrigin::root(), EXEMPT, true));
+        assert_ok!(Validator::set_stake_exempt(RuntimeOrigin::root(), EXEMPT, true));
+        assert!(StakeExemptAccounts::<Test>::contains_key(EXEMPT));
+
+        assert_ok!(Validator::set_stake_exempt(RuntimeOrigin::root(), EXEMPT, false));
+        assert_ok!(Validator::set_stake_exempt(RuntimeOrigin::root(), EXEMPT, false));
+        assert!(!StakeExemptAccounts::<Test>::contains_key(EXEMPT));
+    });
+}
+
+#[test]
+fn revoked_exemption_restores_full_stake_requirement() {
+    new_test_ext(vec![]).execute_with(|| {
+        assert_ok!(Validator::set_stake_exempt(RuntimeOrigin::root(), EXEMPT, true));
+        assert_ok!(Validator::set_stake_exempt(RuntimeOrigin::root(), EXEMPT, false));
+
+        // Without exemption a zero balance no longer covers the lock.
+        assert_noop!(
+            Validator::lock(RuntimeOrigin::signed(EXEMPT)),
+            Error::<Test>::InsufficientBalance
+        );
+    });
+}
+
+#[test]
+fn revoking_exemption_leaves_active_validator_untouched() {
+    new_test_ext(vec![]).execute_with(|| {
+        assert_ok!(Validator::set_stake_exempt(RuntimeOrigin::root(), EXEMPT, true));
+        assert_ok!(Validator::lock(RuntimeOrigin::signed(EXEMPT)));
+
+        assert_ok!(Validator::set_stake_exempt(RuntimeOrigin::root(), EXEMPT, false));
+
+        // The zero amount was fixed at join time; revocation only affects future joins.
+        let lock = ValidatorLocks::<Test>::get(EXEMPT).expect("lock recorded");
+        assert_eq!(lock.amount, 0);
+        assert_eq!(lock.status, ValidatorStatus::Active);
+        assert_eq!(PendingValidators::<Test>::get().to_vec(), vec![EXEMPT]);
+    });
+}
+
+#[test]
 fn exempt_account_locks_with_zero_balance() {
     let lock_duration: u64 = <Test as crate::Config>::LockDuration::get();
 
     new_test_ext(vec![]).execute_with(|| {
+        assert_ok!(Validator::set_stake_exempt(RuntimeOrigin::root(), EXEMPT, true));
         assert_ok!(Validator::lock(RuntimeOrigin::signed(EXEMPT)));
 
         let lock = ValidatorLocks::<Test>::get(EXEMPT).expect("lock recorded");
@@ -1054,6 +1123,7 @@ fn exempt_account_rejoin_checks_cooldown_but_not_stake() {
     let rejoin_cooldown: u64 = <Test as crate::Config>::RejoinCooldownPeriod::get();
 
     new_test_ext(vec![]).execute_with(|| {
+        assert_ok!(Validator::set_stake_exempt(RuntimeOrigin::root(), EXEMPT, true));
         RejoinCooldown::<Test>::insert(EXEMPT, rejoin_cooldown);
 
         // Exemption skips the stake but not the cooldown.
@@ -1102,6 +1172,25 @@ fn genesis_validator_needs_no_endowment() {
             }
         );
         assert!(pallet_balances::Locks::<Test>::get(ALICE).is_empty());
+    });
+}
+
+#[test]
+fn genesis_validators_are_seeded_exempt() {
+    let mut t = frame_system::GenesisConfig::<Test>::default()
+        .build_storage()
+        .unwrap();
+    crate::GenesisConfig::<Test> {
+        initial_validators: vec![ALICE, BOB],
+        ..Default::default()
+    }
+    .assimilate_storage(&mut t)
+    .unwrap();
+    let mut ext: sp_io::TestExternalities = t.into();
+    ext.execute_with(|| {
+        assert!(StakeExemptAccounts::<Test>::contains_key(ALICE));
+        assert!(StakeExemptAccounts::<Test>::contains_key(BOB));
+        assert!(!StakeExemptAccounts::<Test>::contains_key(CHARLIE));
     });
 }
 
