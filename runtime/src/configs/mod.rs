@@ -443,6 +443,7 @@ impl pallet_validator::Config for Runtime {
 	type SessionOffset = SessionOffset;
 	type LockAmount = ConstU128<{ 100_000_000 * UNIT }>;
 	type ExemptOrigin = pallet_prime::EnsurePrime<Runtime>;
+	type IdentityGate = governance::QualifiedIdentity;
 	type LockDuration = ConstU32<{ 180 * DAYS }>;
 	type LockId = ValidatorLockId;
 	type MaxValidators = ConstU32<1_000>;
@@ -467,6 +468,7 @@ impl pallet_validator::Config for Runtime {
 	type SessionOffset = SessionOffset;
 	type LockAmount = ConstU128<{ 1 * UNIT }>;
 	type ExemptOrigin = pallet_prime::EnsurePrime<Runtime>;
+	type IdentityGate = governance::QualifiedIdentity;
 	type LockDuration = ConstU32<{ SessionPeriod::get() + 2 * MINUTES }>;
 	type LockId = ValidatorLockId;
 	type MaxValidators = ConstU32<4>;

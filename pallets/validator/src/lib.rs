@@ -1,8 +1,7 @@
 //! # Pallet Validator
 //!
 //! Manages the full lifecycle of validators: lock, auto-renewal, exit,
-//! and kick. This crate currently provides the storage, event, and error
-//! skeleton.
+//! and kick.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
@@ -71,7 +70,7 @@ pub mod pallet {
     use super::*;
     use frame_support::{
         pallet_prelude::*,
-        traits::{Defensive, LockIdentifier, WithdrawReasons},
+        traits::{Contains, Defensive, LockIdentifier, WithdrawReasons},
     };
     use frame_system::pallet_prelude::*;
 
@@ -103,6 +102,11 @@ pub mod pallet {
 
         /// Origin allowed to manage [`StakeExemptAccounts`].
         type ExemptOrigin: EnsureOrigin<Self::RuntimeOrigin>;
+
+        /// Identity requirement every candidate must pass to join via `lock`.
+        /// Stake exemption does not bypass it. Genesis appointment does, along
+        /// with every other join condition.
+        type IdentityGate: Contains<Self::AccountId>;
 
         /// Lock duration applied at registration and on each renewal.
         #[pallet::constant]
@@ -280,6 +284,8 @@ pub mod pallet {
         TooManyValidators,
         /// Caller has not registered session keys.
         SessionKeysNotRegistered,
+        /// Caller does not pass the configured identity gate.
+        IdentityNotQualified,
     }
 
     #[pallet::hooks]
@@ -368,6 +374,11 @@ pub mod pallet {
             ensure!(
                 T::SessionInterface::has_keys(&who),
                 Error::<T>::SessionKeysNotRegistered,
+            );
+
+            ensure!(
+                T::IdentityGate::contains(&who),
+                Error::<T>::IdentityNotQualified,
             );
 
             let now = frame_system::Pallet::<T>::block_number();

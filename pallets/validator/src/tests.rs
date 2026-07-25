@@ -51,6 +51,23 @@ fn lock_fails_without_session_keys() {
 }
 
 #[test]
+fn lock_fails_without_qualified_identity() {
+    let lock_amount: Balance = <Test as crate::Config>::LockAmount::get();
+
+    new_test_ext(vec![(ALICE, lock_amount)]).execute_with(|| {
+        UnqualifiedIdentities::mutate(|set| {
+            set.insert(ALICE);
+        });
+        assert_noop!(
+            Validator::lock(RuntimeOrigin::signed(ALICE)),
+            Error::<Test>::IdentityNotQualified,
+        );
+        assert!(ValidatorLocks::<Test>::get(ALICE).is_none());
+        assert!(PendingValidators::<Test>::get().is_empty());
+    });
+}
+
+#[test]
 fn lock_fails_when_balance_insufficient() {
     let lock_amount: Balance = <Test as crate::Config>::LockAmount::get();
 
@@ -1119,6 +1136,21 @@ fn exempt_account_locks_with_zero_balance() {
 }
 
 #[test]
+fn exemption_does_not_bypass_identity_gate() {
+    new_test_ext(vec![]).execute_with(|| {
+        assert_ok!(Validator::set_stake_exempt(RuntimeOrigin::root(), EXEMPT, true));
+        UnqualifiedIdentities::mutate(|set| {
+            set.insert(EXEMPT);
+        });
+        assert_noop!(
+            Validator::lock(RuntimeOrigin::signed(EXEMPT)),
+            Error::<Test>::IdentityNotQualified,
+        );
+        assert!(ValidatorLocks::<Test>::get(EXEMPT).is_none());
+    });
+}
+
+#[test]
 fn exempt_account_rejoin_checks_cooldown_but_not_stake() {
     let rejoin_cooldown: u64 = <Test as crate::Config>::RejoinCooldownPeriod::get();
 
@@ -1172,6 +1204,27 @@ fn genesis_validator_needs_no_endowment() {
             }
         );
         assert!(pallet_balances::Locks::<Test>::get(ALICE).is_empty());
+    });
+}
+
+#[test]
+fn genesis_seeding_bypasses_identity_gate() {
+    UnqualifiedIdentities::mutate(|set| {
+        set.insert(ALICE);
+    });
+    let mut t = frame_system::GenesisConfig::<Test>::default()
+        .build_storage()
+        .unwrap();
+    crate::GenesisConfig::<Test> {
+        initial_validators: vec![ALICE],
+        ..Default::default()
+    }
+    .assimilate_storage(&mut t)
+    .unwrap();
+    let mut ext: sp_io::TestExternalities = t.into();
+    ext.execute_with(|| {
+        assert!(ValidatorLocks::<Test>::get(ALICE).is_some());
+        assert!(DesiredValidators::<Test>::get().contains(&ALICE));
     });
 }
 
