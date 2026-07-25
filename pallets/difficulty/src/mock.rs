@@ -1,5 +1,5 @@
 use crate as pallet_difficulty;
-use frame_support::{derive_impl, traits::{ConstU64, Hooks}};
+use frame_support::{derive_impl, traits::{ConstU64, Get, Hooks}};
 use sp_core::U256;
 use sp_runtime::BuildStorage;
 
@@ -47,6 +47,9 @@ impl pallet_difficulty::Config for Test {
 /// Initial difficulty used by tests.
 pub const INITIAL_DIFFICULTY: u128 = 1_000_000;
 
+/// Genesis wall clock the mock anchors ASERT to.
+pub const GENESIS_ANCHOR_TIMESTAMP: u64 = 1_000_000;
+
 pub fn new_test_ext() -> sp_io::TestExternalities {
 	new_test_ext_with(U256::from(INITIAL_DIFFICULTY))
 }
@@ -57,12 +60,21 @@ pub fn new_test_ext_with(difficulty: U256) -> sp_io::TestExternalities {
 
 	pallet_difficulty::GenesisConfig::<Test> {
 		initial_difficulty: difficulty,
+		anchor_timestamp: GENESIS_ANCHOR_TIMESTAMP,
 		_marker: Default::default(),
 	}
 	.assimilate_storage(&mut storage)
 	.unwrap();
 
 	storage.into()
+}
+
+/// Mine block #1 one target interval after the genesis anchor, so the chain
+/// starts out exactly on schedule at the configured difficulty. Returns its
+/// timestamp.
+pub fn bootstrap() -> u64 {
+	let target: u64 = <Test as pallet_difficulty::Config>::TargetBlockTime::get();
+	run_to_block_at(1, GENESIS_ANCHOR_TIMESTAMP + target)
 }
 
 /// Advance to the given block, set the timestamp (in seconds),

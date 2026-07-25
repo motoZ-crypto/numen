@@ -18,6 +18,22 @@ const GENESIS_AIRDROP_ISSUANCE: u128 = 200_000_000 * UNIT;
 
 const INITIAL_DIFFICULTY: u32 = 1_000;
 
+/// Wall clock mainnet launches at, seeding its ASERT anchor.
+///
+/// Set this to the planned launch moment when the mainnet raw chain spec is
+/// generated. Every halflife of earliness halves the difficulty the opening
+/// blocks have to meet, so a spec baked five hours early already opens at the
+/// minimum. Erring late only makes the opening harder until the wall clock
+/// reaches the anchor.
+const MAIN_GENESIS_ANCHOR_TIMESTAMP: u64 = 1_785_542_400; // 2026-08-01 UTC
+
+/// ASERT anchor for every chain that starts whenever someone runs it.
+///
+/// Far enough in the past that its exact value stops mattering, so it never
+/// needs touching. Kept separate from the mainnet anchor so that moving that
+/// one toward a launch date cannot raise a test chain's opening difficulty.
+const TEST_GENESIS_ANCHOR_TIMESTAMP: u64 = 1_767_225_600; // 2026-01-01 UTC
+
 const DEV_EVM_ACCOUNT_BALANCE: u128 = 1_000_000 * UNIT;
 const DEV_ACCOUNT_BALANCE: u128 = 1_000_000 * UNIT;
 
@@ -121,7 +137,8 @@ fn genesis_patch(
 	validators: Vec<(AccountId, GrandpaId, ImOnlineId)>,
 	chain_id: u64,
 	evm_accounts: BTreeMap<H160, GenesisAccount>,
-	initial_difficulty: U256
+	initial_difficulty: U256,
+	anchor_timestamp: u64
 ) -> Value {
 
 	let session_keys = validators
@@ -135,7 +152,7 @@ fn genesis_patch(
 	build_struct_json_patch!(RuntimeGenesisConfig {
 		balances: BalancesConfig { balances },
 		prime: PrimeConfig { key: prime_key },
-		difficulty: DifficultyConfig { initial_difficulty },
+		difficulty: DifficultyConfig { initial_difficulty, anchor_timestamp },
 		session: SessionConfig { keys: session_keys },
 		validator: ValidatorConfig {
 			initial_validators: validators.iter().map(|(a, _, _)| a.clone()).collect::<Vec<_>>(),
@@ -154,7 +171,8 @@ pub fn development_config_genesis() -> Value {
 		dev_validators(),
 		DEV_EVM_CHAIN_ID,
 		dev_evm_accounts(),
-		INITIAL_DIFFICULTY.into()
+		INITIAL_DIFFICULTY.into(),
+		TEST_GENESIS_ANCHOR_TIMESTAMP
 	)
 }
 
@@ -165,7 +183,8 @@ pub fn local_config_genesis() -> Value {
 		dev_validators(),
 		DEV_EVM_CHAIN_ID,
 		dev_evm_accounts(),
-		INITIAL_DIFFICULTY.into()
+		INITIAL_DIFFICULTY.into(),
+		TEST_GENESIS_ANCHOR_TIMESTAMP
 	)
 }
 
@@ -176,7 +195,8 @@ pub fn integration_config_genesis() -> Value {
 		dev_validators(),
 		DEV_EVM_CHAIN_ID,
 		dev_evm_accounts(),
-		INITIAL_DIFFICULTY.into()
+		INITIAL_DIFFICULTY.into(),
+		TEST_GENESIS_ANCHOR_TIMESTAMP
 	)
 }
 
@@ -187,7 +207,8 @@ pub fn testnet_config_genesis() -> Value {
 		live_validators(),
 		TEST_EVM_CHAIN_ID,
 		BTreeMap::new(),
-		INITIAL_DIFFICULTY.into()
+		INITIAL_DIFFICULTY.into(),
+		TEST_GENESIS_ANCHOR_TIMESTAMP
 	)
 }
 
@@ -198,7 +219,8 @@ pub fn mainnet_config_genesis() -> Value {
 		live_validators(),
 		MAIN_EVM_CHAIN_ID,
 		BTreeMap::new(),
-		INITIAL_DIFFICULTY.into()
+		INITIAL_DIFFICULTY.into(),
+		MAIN_GENESIS_ANCHOR_TIMESTAMP
 	)
 }
 

@@ -16,7 +16,7 @@ fn normal_block_keeps_difficulty() {
 	new_test_ext().execute_with(|| {
 		let target: u64 = <Test as crate::Config>::TargetBlockTime::get();
 
-		let t = run_to_block_at(1, 1_000_000);
+		let t = bootstrap();
 		let initial = CurrentDifficulty::<Test>::get();
 
 		run_to_block_at(2, t + target);
@@ -31,7 +31,7 @@ fn slow_block_decrease_difficulty() {
 	new_test_ext().execute_with(|| {
 		let target: u64 = <Test as crate::Config>::TargetBlockTime::get();
 
-		let t = run_to_block_at(1, 1_000_000);
+		let t = bootstrap();
 		let before = CurrentDifficulty::<Test>::get();
 
 		run_to_block_at(2, t + 2 * target);
@@ -46,7 +46,7 @@ fn fast_block_increase_difficulty() {
 	new_test_ext().execute_with(|| {
 		let target: u64 = <Test as crate::Config>::TargetBlockTime::get();
 
-		let t = run_to_block_at(1, 1_000_000);
+		let t = bootstrap();
 		let before = CurrentDifficulty::<Test>::get();
 
 		run_to_block_at(2, t + target / 2);
@@ -60,8 +60,8 @@ fn fast_block_increase_difficulty() {
 fn anchor_unchanged_during_normal_operation() {
 	new_test_ext().execute_with(|| {
 		let target: u64 = <Test as crate::Config>::TargetBlockTime::get();
-		
-		let mut t = run_to_block_at(1, 1_000_000);
+
+		let mut t = bootstrap();
 		let anchor_h = AnchorHeight::<Test>::get();
 		let anchor_ts = AnchorTimestamp::<Test>::get();
 
@@ -80,7 +80,7 @@ fn anchor_unchanged_when_gap_below_threshold() {
 		let target: u64 = <Test as crate::Config>::TargetBlockTime::get();
 		let break_threshold: u64 = <Test as crate::Config>::BreakThresholdSecs::get();
 
-		let mut t = run_to_block_at(1, 1_000_000);
+		let mut t = bootstrap();
 		let anchor_h = AnchorHeight::<Test>::get();
 		let anchor_ts = AnchorTimestamp::<Test>::get();
 
@@ -100,7 +100,7 @@ fn anchor_changed_when_gap_exceeds_threshold() {
 		let target: u64 = <Test as crate::Config>::TargetBlockTime::get();
 		let break_threshold: u64 = <Test as crate::Config>::BreakThresholdSecs::get();
 
-		let mut t = run_to_block_at(1, 1_000_000);
+		let mut t = bootstrap();
 
 		t = run_to_block_at(2, t + target);
 		t = run_to_block_at(3, t + target);
@@ -118,7 +118,7 @@ fn realtime_difficulty_halves_after_halflife() {
 		let target: u64 = <Test as crate::Config>::TargetBlockTime::get();
 		let halflife: u64 = <Test as crate::Config>::Halflife::get();
 
-		let t = run_to_block_at(1, 1_000_000);
+		let t = bootstrap();
 		let initial = CurrentDifficulty::<Test>::get();
 
 		let realtime_difficulty = crate::Pallet::<Test>::realtime_difficulty(t + halflife + target);
@@ -128,46 +128,57 @@ fn realtime_difficulty_halves_after_halflife() {
 	});
 }
 
+/// Querying below the anchor height must saturate the height delta instead of
+/// underflowing. Queried at the anchor timestamp the exponent is zero, so
+/// ASERT lands back on the anchor difficulty.
 #[test]
-fn realtime_difficulty_returns_current_when_next_height_before_anchor_height() {
-	let initial = U256::from(INITIAL_DIFFICULTY);
-	new_test_ext_with(initial).execute_with(|| {
-		CurrentDifficulty::<Test>::put(initial);
-		AnchorTimestamp::<Test>::put(0);
-		AnchorHeight::<Test>::put(2);
-		// block_number = 0 (default) → next_height = 1 < anchor_height = 2.
-		let d = crate::Pallet::<Test>::realtime_difficulty(0);
-		assert_eq!(d, initial, "before-anchor query must return current difficulty");
+fn realtime_difficulty_below_anchor_height_does_not_underflow() {
+	new_test_ext().execute_with(|| {
+		AnchorHeight::<Test>::put(100);
+
+		// block_number = 0 (default), so next_height = 1 sits far below the anchor.
+		let d = crate::Pallet::<Test>::realtime_difficulty(GENESIS_ANCHOR_TIMESTAMP);
+
+		assert_eq!(d, U256::from(INITIAL_DIFFICULTY));
 	});
 }
 
 #[test]
-fn genesis_initializes_storage_from_difficulty() {
+fn genesis_initializes_storage_from_config() {
 	let difficulty = U256::from(INITIAL_DIFFICULTY);
-    new_test_ext_with(difficulty).execute_with(|| {
-        assert_eq!(CurrentDifficulty::<Test>::get(), difficulty);
-        assert_eq!(AnchorTarget::<Test>::get(), U256::MAX / difficulty);
-        assert_eq!(AnchorTimestamp::<Test>::get(), 0);
-        assert_eq!(AnchorHeight::<Test>::get(), 0);
-    });
+	new_test_ext_with(difficulty).execute_with(|| {
+		assert_eq!(CurrentDifficulty::<Test>::get(), difficulty);
+		assert_eq!(AnchorTarget::<Test>::get(), U256::MAX / difficulty);
+		assert_eq!(AnchorTimestamp::<Test>::get(), GENESIS_ANCHOR_TIMESTAMP);
+		assert_eq!(AnchorHeight::<Test>::get(), 0);
+		assert_eq!(LastBlockTimestamp::<Test>::get(), GENESIS_ANCHOR_TIMESTAMP);
+	});
 }
 
+/// The launch block is verified against the configured difficulty. It used to
+/// be verified at difficulty 1, because an unset anchor timestamp read as the
+/// Unix epoch and saturated the ASERT target.
 #[test]
-fn anchor_initializes() {
-    new_test_ext().execute_with(|| {
-		run_to_block_at(1, 1);
-        assert_eq!(AnchorTimestamp::<Test>::get(), 1);
-        assert_eq!(AnchorHeight::<Test>::get(), 1);
-        assert_eq!(LastBlockTimestamp::<Test>::get(), 1);
-    });
+fn launch_block_difficulty_matches_genesis_config() {
+	let configured = U256::from(1_000u32);
+	new_test_ext_with(configured).execute_with(|| {
+		let target: u64 = <Test as crate::Config>::TargetBlockTime::get();
+
+		let d = crate::Pallet::<Test>::realtime_difficulty(GENESIS_ANCHOR_TIMESTAMP + target);
+
+		assert_eq!(d, configured);
+	});
 }
 
+/// Backdating the launch block used to hand the miner an anchor near the Unix
+/// epoch, collapsing difficulty for everyone after. Against a genesis anchor
+/// the time delta goes deeply negative and ASERT prices the block out.
 #[test]
-fn on_finalize_updates_last_block_timestamp_on_auto_init() {
-	new_test_ext().execute_with(|| {
-		let now = 1_234_567u64;
-		run_to_block_at(1, now);
-		assert_eq!(LastBlockTimestamp::<Test>::get(), now);
+fn near_epoch_launch_block_demands_unreachable_difficulty() {
+	new_test_ext_with(U256::from(1_000u32)).execute_with(|| {
+		let d = crate::Pallet::<Test>::realtime_difficulty(2);
+
+		assert_eq!(d, U256::MAX);
 	});
 }
 
@@ -196,8 +207,7 @@ fn on_finalize_updates_last_block_timestamp_on_anchor_block_branch() {
 #[test]
 fn on_finalize_updates_last_block_timestamp_when_anchor_target_zero() {
 	new_test_ext().execute_with(|| {
-		// Move past auto-init so we reach the ASERT path.
-		let t = run_to_block_at(1, 1_000_000);
+		let t = bootstrap();
 		// Wipe the anchor target to trigger the zero-target short-circuit.
 		AnchorTarget::<Test>::put(U256::zero());
 		let difficulty_before = CurrentDifficulty::<Test>::get();
@@ -216,7 +226,7 @@ fn on_finalize_updates_last_block_timestamp_when_anchor_target_zero() {
 fn on_finalize_updates_last_block_timestamp_on_normal_path() {
 	new_test_ext().execute_with(|| {
 		let target: u64 = <Test as crate::Config>::TargetBlockTime::get();
-		let t = run_to_block_at(1, 1_000_000);
+		let t = bootstrap();
 		let now = t + target;
 		run_to_block_at(2, now);
 		assert_eq!(LastBlockTimestamp::<Test>::get(), now);
@@ -229,10 +239,9 @@ fn on_finalize_updates_last_block_timestamp_on_normal_path() {
 fn on_finalize_updates_last_block_timestamp_on_break_recovery() {
 	new_test_ext().execute_with(|| {
 		let break_threshold: u64 = <Test as crate::Config>::BreakThresholdSecs::get();
-		let t = run_to_block_at(1, 1_000_000);
+		let t = bootstrap();
 		let now = t + break_threshold + 1;
 		run_to_block_at(2, now);
 		assert_eq!(LastBlockTimestamp::<Test>::get(), now);
 	});
 }
-

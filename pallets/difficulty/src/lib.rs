@@ -88,8 +88,8 @@ pub mod pallet {
 
 	/// Timestamp of the anchor block (seconds since Unix epoch).
 	///
-	/// Auto-initialized on the first block with a valid timestamp,
-	/// then only re-set on interruption recovery.
+	/// Set at genesis and only re-set on interruption recovery. Never zero,
+	/// so ASERT can never read it as the Unix epoch.
 	#[pallet::storage]
 	#[pallet::getter(fn anchor_timestamp)]
 	pub type AnchorTimestamp<T: Config> = StorageValue<_, u64, ValueQuery>;
@@ -111,6 +111,11 @@ pub mod pallet {
 	pub struct GenesisConfig<T: Config> {
 		/// Initial mining difficulty. Must be non-zero.
 		pub initial_difficulty: U256,
+		/// Wall clock the chain launches at (seconds since Unix epoch), which
+		/// becomes the ASERT anchor. Every halflife of earliness halves the
+		/// difficulty the opening blocks have to meet, and a late anchor raises
+		/// it on the same curve until the wall clock catches up.
+		pub anchor_timestamp: u64,
 		#[serde(skip)]
 		pub _marker: core::marker::PhantomData<T>,
 	}
@@ -119,6 +124,11 @@ pub mod pallet {
 		fn default() -> Self {
 			Self {
 				initial_difficulty: U256::one(),
+				// A chain spec that forgets to set this has to fail closed. An
+				// anchor in the far future prices every block out of reach and
+				// stalls the chain, where an anchor at the epoch would instead
+				// hand out blocks at difficulty 1.
+				anchor_timestamp: u64::MAX,
 				_marker: Default::default(),
 			}
 		}
@@ -128,8 +138,15 @@ pub mod pallet {
 	impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
 		fn build(&self) {
 			assert!(!self.initial_difficulty.is_zero(), "initial_difficulty must be non-zero");
+			assert!(self.anchor_timestamp > 0, "anchor_timestamp must be non-zero");
 			CurrentDifficulty::<T>::put(self.initial_difficulty);
+			// The genesis block is the anchor, so the whole triple is written
+			// here. Leaving any part of it to a lazy first block init lets a
+			// miner pick the anchor with a self reported timestamp.
 			AnchorTarget::<T>::put(U256::MAX / self.initial_difficulty);
+			AnchorTimestamp::<T>::put(self.anchor_timestamp);
+			AnchorHeight::<T>::put(0);
+			LastBlockTimestamp::<T>::put(self.anchor_timestamp);
 		}
 	}
 
@@ -156,17 +173,7 @@ pub mod pallet {
 								.unwrap_or(0u64);
 			let now_secs = now_ms / 1000;
 
-			// Auto-initialize anchor on the first block with a valid
-			// timestamp. This block becomes the anchor — keep the
-			// initial difficulty unchanged.
 			let anchor_ts = AnchorTimestamp::<T>::get();
-			if anchor_ts == 0 && now_secs > 0 {
-				AnchorTimestamp::<T>::put(now_secs);
-				AnchorHeight::<T>::put(current_height);
-				LastBlockTimestamp::<T>::put(now_secs);
-				return;
-			}
-
 			let anchor_height = AnchorHeight::<T>::get();
 
 			// Skip ASERT on the anchor block itself.
