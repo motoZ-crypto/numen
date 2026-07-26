@@ -7,8 +7,6 @@
 //! the EVM `COINBASE` (`FindAuthor<H160>`) is pinned to the zero address; EVM
 //! fees are still routed to the substrate-side miner by [`EvmDealWithFees`].
 
-use core::marker::PhantomData;
-
 use frame_support::{
 	parameter_types,
 	traits::{
@@ -20,13 +18,16 @@ use frame_support::{
 use pallet_ethereum::PostLogContent;
 use pallet_evm::{
 	EnsureAddressNever, EnsureAddressRoot, EVMFungibleAdapter, HashedAddressMapping,
-	IsPrecompileResult, OnChargeEVMTransaction, Precompile, PrecompileHandle, PrecompileResult,
-	PrecompileSet,
+	OnChargeEVMTransaction,
 };
 use pallet_evm_precompile_bn128::{Bn128Add, Bn128Mul, Bn128Pairing};
 use pallet_evm_precompile_balances_erc20::{Erc20BalancesPrecompile, Erc20Metadata};
 use pallet_evm_precompile_modexp::Modexp;
 use pallet_evm_precompile_simple::{ECRecover, Identity, Ripemd160, Sha256};
+use precompile_utils::precompile_set::{
+	AcceptDelegateCall, AddressU64, CallableByContract, CallableByPrecompile, PrecompileAt,
+	PrecompileSetBuilder,
+};
 use sp_core::{H160, U256};
 use sp_runtime::{
 	traits::BlakeTwo256,
@@ -64,7 +65,7 @@ parameter_types! {
 		weight_per_gas(BLOCK_GAS_LIMIT, NORMAL_DISPATCH_RATIO, WEIGHT_MILLIS_PER_BLOCK),
 		0,
 	);
-	pub PrecompilesValue: FrontierPrecompiles<Runtime> = FrontierPrecompiles::<_>::new();
+	pub PrecompilesValue: FrontierPrecompiles<Runtime> = FrontierPrecompiles::<Runtime>::new();
 }
 
 /// Local copy of [`fp_evm::weight_per_gas`] used here in `const`-friendly form.
@@ -95,6 +96,20 @@ impl Erc20Metadata for NativeErc20Metadata {
 	const DECIMALS: u8 = 18;
 }
 
+/// Call context policy for the stock Ethereum precompiles. They are pure
+/// functions of their input and mainnet lets every caller reach them, including
+/// through DELEGATECALL, so all three doors stay open to keep bytecode compiled
+/// for Ethereum working unchanged.
+pub type EthereumPrecompileChecks = (AcceptDelegateCall, CallableByContract, CallableByPrecompile);
+
+/// Call context policy for the ERC20 facade. It reads the funds owner from
+/// `context().caller`, which DELEGATECALL and CALLCODE rebind to the outer
+/// caller, so borrowed code could spend a third party balance. Omitting
+/// [`AcceptDelegateCall`] makes `PrecompileAt` reject those two opcodes. Plain
+/// CALL stays open to contracts and precompiles, where the caller really is the
+/// account being debited.
+pub type Erc20PrecompileChecks = (CallableByContract, CallableByPrecompile);
+
 /// Precompile set covering the standard Ethereum precompiles 1-8 plus the
 /// chain-specific `balances-erc20` precompile at `0x0000…0802`, which
 /// exposes the native balance pallet through an ERC20 interface and adds a
@@ -105,73 +120,29 @@ impl Erc20Metadata for NativeErc20Metadata {
 /// [`pallet_evm_precompile_modexp`]; the bn128 curve precompiles use
 /// [`pallet_evm_precompile_bn128`]; the chain-specific ERC20 facade comes
 /// from [`pallet_evm_precompile_balances_erc20`].
-pub struct FrontierPrecompiles<R>(PhantomData<R>);
-
-impl<R> FrontierPrecompiles<R>
-where
-	R: pallet_evm::Config,
-{
-	pub fn new() -> Self {
-		Self(PhantomData)
-	}
-	pub fn used_addresses() -> [H160; 9] {
-		[
-			hash(1),
-			hash(2),
-			hash(3),
-			hash(4),
-			hash(5),
-			hash(6),
-			hash(7),
-			hash(8),
-			hash(0x0802),
-		]
-	}
-}
-
-impl<R> Default for FrontierPrecompiles<R>
-where
-	R: pallet_evm::Config,
-{
-	fn default() -> Self {
-		Self::new()
-	}
-}
-
-impl<R> PrecompileSet for FrontierPrecompiles<R>
-where
-	R: pallet_evm::Config + pallet_timestamp::Config<Moment = u64>,
-	pallet_evm::AccountIdOf<R>: From<[u8; 32]>,
-	<<R as pallet_evm::Config>::Currency as frame_support::traits::Currency<
-		pallet_evm::AccountIdOf<R>,
-	>>::Balance: TryFrom<U256> + Into<U256>,
-{
-	fn execute(&self, handle: &mut impl PrecompileHandle) -> Option<PrecompileResult> {
-		match handle.code_address() {
-			a if a == hash(1) => Some(ECRecover::execute(handle)),
-			a if a == hash(2) => Some(Sha256::execute(handle)),
-			a if a == hash(3) => Some(Ripemd160::execute(handle)),
-			a if a == hash(4) => Some(Identity::execute(handle)),
-			a if a == hash(5) => Some(Modexp::execute(handle)),
-			a if a == hash(6) => Some(Bn128Add::execute(handle)),
-			a if a == hash(7) => Some(Bn128Mul::execute(handle)),
-			a if a == hash(8) => Some(Bn128Pairing::execute(handle)),
-			a if a == hash(0x0802) => Some(Erc20BalancesPrecompile::<R, NativeErc20Metadata>::execute(handle)),
-			_ => None,
-		}
-	}
-
-	fn is_precompile(&self, address: H160, _gas: u64) -> IsPrecompileResult {
-		IsPrecompileResult::Answer {
-			is_precompile: Self::used_addresses().contains(&address),
-			extra_cost: 0,
-		}
-	}
-}
-
-fn hash(a: u64) -> H160 {
-	H160::from_low_u64_be(a)
-}
+///
+/// Built with [`PrecompileSetBuilder`] rather than a hand written dispatcher so
+/// that every member goes through the upstream call context checks. A dispatcher
+/// that only matches on the code address silently accepts DELEGATECALL, which
+/// forges `msg.sender` for any precompile that trusts it.
+pub type FrontierPrecompiles<R> = PrecompileSetBuilder<
+	R,
+	(
+		PrecompileAt<AddressU64<1>, ECRecover, EthereumPrecompileChecks>,
+		PrecompileAt<AddressU64<2>, Sha256, EthereumPrecompileChecks>,
+		PrecompileAt<AddressU64<3>, Ripemd160, EthereumPrecompileChecks>,
+		PrecompileAt<AddressU64<4>, Identity, EthereumPrecompileChecks>,
+		PrecompileAt<AddressU64<5>, Modexp, EthereumPrecompileChecks>,
+		PrecompileAt<AddressU64<6>, Bn128Add, EthereumPrecompileChecks>,
+		PrecompileAt<AddressU64<7>, Bn128Mul, EthereumPrecompileChecks>,
+		PrecompileAt<AddressU64<8>, Bn128Pairing, EthereumPrecompileChecks>,
+		PrecompileAt<
+			AddressU64<0x802>,
+			Erc20BalancesPrecompile<R, NativeErc20Metadata>,
+			Erc20PrecompileChecks,
+		>,
+	),
+>;
 
 /// EVM fee handler routing both the base fee and the priority tip to the PoW
 /// miner. Base fee goes through [`DealWithFees`]; the tip is deposited to the

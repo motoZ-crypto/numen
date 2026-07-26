@@ -6884,6 +6884,7 @@ dependencies = [
  "parity-scale-codec",
  "poscan",
  "poscan-pow",
+ "precompile-utils",
  "sc-executor",
  "scale-info",
  "serde",

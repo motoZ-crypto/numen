@@ -56,6 +56,7 @@ pallet-evm-precompile-modexp.workspace = true
 pallet-evm-precompile-sha3fips.workspace = true
 pallet-evm-precompile-simple.workspace = true
 pallet-evm-precompile-balances-erc20.workspace = true
+precompile-utils.workspace = true
 fp-evm.workspace = true
 fp-rpc.workspace = true
 fp-self-contained = { workspace = true, features = ["serde"] }
@@ -141,6 +142,7 @@ std = [
 	"pallet-evm-precompile-sha3fips/std",
 	"pallet-evm-precompile-simple/std",
 	"pallet-evm-precompile-balances-erc20/std",
+	"precompile-utils/std",
 	"fp-evm/std",
 	"fp-rpc/std",
 	"fp-self-contained/std",
