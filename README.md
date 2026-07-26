@@ -23,7 +23,14 @@ Disk usage grows as the chain does.
 
 ## Getting Started
 
-See [docs/how-to-build.md](docs/how-to-build.md) for instructions on building this blockchain node program in Rust.
+Grab a prebuilt binary from the [releases page](https://github.com/motoZ-crypto/numen/releases). Each archive holds the `numen` binary and `testnet-raw.json`. Nothing else to download.
+
+```bash
+tar -xzf numen-linux-x86_64.tar.gz
+cd numen-linux-x86_64
+```
+
+Builds ship for Linux x86_64 and macOS arm64. Build from source for anything else, or to track master. See [docs/how-to-build.md](docs/how-to-build.md).
 
 ## Run a node
 
