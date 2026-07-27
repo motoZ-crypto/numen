@@ -1,14 +1,14 @@
 //! pallet-vesting wired for the airdrop. A vested transfer locks the grant and
 //! releases it linearly per block. These pin the release curve, the completion
-//! that clears the lock, and that the lock also binds the Frontier EVM view so
-//! locked funds cannot leave through an EVM entry.
+//! that clears the lock, and the two ways funds might slip out early, through
+//! fees or through the Frontier EVM view.
 
 mod common;
 
 use common::new_test_ext;
 use frame_support::{
 	assert_noop, assert_ok,
-	traits::tokens::fungible::Mutate,
+	traits::{tokens::fungible::Mutate, Currency, ExistenceRequirement, WithdrawReasons},
 };
 use numen_runtime::{AccountId, Balances, Runtime, RuntimeOrigin, System, Vesting, EVM, UNIT};
 use pallet_evm::AddressMapping;
@@ -96,6 +96,36 @@ fn vest_completes_and_clears_schedule_after_full_term() {
 			GRANT,
 		));
 		assert_eq!(Balances::free_balance(&sink), GRANT);
+	});
+}
+
+/// The reason set on the vesting lock reads as though fees might slip through.
+/// They cannot. Pinned so a future edit to that set does not quietly turn into
+/// a real exemption.
+#[test]
+fn fees_cannot_draw_on_the_locked_grant() {
+	new_test_ext().execute_with(|| {
+		let alice = Sr25519Keyring::Alice.to_account_id();
+		let bob = Sr25519Keyring::Bob.to_account_id();
+		airdrop_to(&alice, &bob);
+
+		let fee = |amount: u128| {
+			<Balances as Currency<AccountId>>::withdraw(
+				&bob,
+				amount,
+				WithdrawReasons::TRANSACTION_PAYMENT,
+				ExistenceRequirement::KeepAlive,
+			)
+		};
+
+		assert_noop!(fee(1), pallet_balances::Error::<Runtime>::LiquidityRestrictions);
+
+		// The elapsed share is the whole fee budget, down to the last planck.
+		System::set_block_number(START + 50);
+		assert_ok!(Vesting::vest(RuntimeOrigin::signed(bob.clone())));
+		let released = 50 * PER_BLOCK;
+		assert_noop!(fee(released + 1), pallet_balances::Error::<Runtime>::LiquidityRestrictions);
+		assert_ok!(fee(released));
 	});
 }
 

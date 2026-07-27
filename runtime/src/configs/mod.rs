@@ -324,10 +324,12 @@ parameter_types! {
 	/// A grant small enough to fall under this is not worth the storage a
 	/// schedule costs. One NUMN is a million times the existential deposit.
 	pub const MinVestedTransfer: Balance = UNIT;
-	/// Unvested funds still pay fees and back governance deposits. Only moving
-	/// them out of the account is fenced off.
-	pub UnvestedFundsAllowedWithdrawReasons: WithdrawReasons =
-		WithdrawReasons::except(WithdrawReasons::TRANSFER | WithdrawReasons::RESERVE);
+	/// `pallet-balances` folds every lock into one frozen figure and drops the
+	/// reasons each carries, so this set buys no exemption whatever it holds.
+	/// Empty spells out what actually happens, which is that unvested funds are
+	/// fenced off from every use. A grant needs free balance beside it or the
+	/// account cannot even afford to vest.
+	pub UnvestedFundsAllowedWithdrawReasons: WithdrawReasons = WithdrawReasons::empty();
 }
 
 impl pallet_vesting::Config for Runtime {
