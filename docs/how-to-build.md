@@ -3,6 +3,28 @@
 This guide explains how to build and run the blockchain node using Rust.  
 It covers the required dependencies, environment setup, and step-by-step build instructions.
 
+## Quick Start (Ubuntu/Debian)
+
+One block from a clean machine to a finished build. Enter your sudo password at the start, then walk away.
+
+```bash
+sudo apt update
+sudo apt install -y git clang curl libssl-dev llvm libclang-dev libudev-dev make pkg-config protobuf-compiler
+
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+source ~/.cargo/env
+rustup default stable
+rustup update
+rustup target add wasm32v1-none
+rustup component add rust-src
+
+git clone https://github.com/motoZ-crypto/numen.git
+cd numen
+cargo build
+```
+
+The sections below cover the same steps in detail, plus other operating systems.
+
 ## Build Dependencies
 
 ### Ubuntu/Debian
@@ -11,7 +33,7 @@ Use a terminal shell to execute the following commands:
 
 ```bash
 sudo apt update
-sudo apt install -y git clang curl libssl-dev llvm libclang-dev libudev-dev make protobuf-compiler
+sudo apt install -y git clang curl libssl-dev llvm libclang-dev libudev-dev make pkg-config protobuf-compiler
 ```
 
 ### Arch Linux
@@ -19,7 +41,7 @@ sudo apt install -y git clang curl libssl-dev llvm libclang-dev libudev-dev make
 Run these commands from a terminal:
 
 ```bash
-pacman -Syu --needed --noconfirm git curl clang llvm openssl protobuf make
+pacman -Syu --needed --noconfirm git curl clang llvm openssl pkgconf protobuf make
 ```
 
 ### Fedora
@@ -28,7 +50,7 @@ Run these commands from a terminal:
 
 ```bash
 sudo dnf update
-sudo dnf install git curl clang llvm-devel openssl-devel systemd-devel make protobuf-compiler
+sudo dnf install git curl clang llvm-devel openssl-devel systemd-devel make pkgconf-pkg-config protobuf-compiler
 ```
 
 ### OpenSUSE
@@ -36,7 +58,7 @@ sudo dnf install git curl clang llvm-devel openssl-devel systemd-devel make prot
 Run these commands from a terminal:
 
 ```bash
-sudo zypper install git curl clang llvm-devel openssl-devel libudev-devel make protobuf
+sudo zypper install git curl clang llvm-devel openssl-devel libudev-devel make pkg-config protobuf
 ```
 
 ### macOS
@@ -53,7 +75,7 @@ Open the Terminal application and execute the following commands:
 
 # Make sure Homebrew is up-to-date, install dependencies
 brew update
-brew install openssl protobuf
+brew install openssl pkg-config protobuf
 ```
 
 ### Windows
@@ -69,7 +91,7 @@ recommended to use [Windows Subsystem Linux](https://docs.microsoft.com/en-us/wi
 ### 1. Install rustup
 
 ```bash
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 source ~/.cargo/env
 ```
 
@@ -113,6 +135,8 @@ rustc 1.84.0 (...)
 ## Building the Project
 
 ```bash
+git clone https://github.com/motoZ-crypto/numen.git
+cd numen
 cargo build
 ```
 
