@@ -148,3 +148,21 @@ The first build compiles all dependencies and may take 20–60 minutes.
 |-----------|---------|
 | RAM       |    6 GB |
 | Disk      |   12 GB |
+
+### Release Build
+
+The published binaries are built differently. Use this if you want to reproduce one.
+
+```bash
+cargo build --profile production --locked -p numen --features metadata-hash
+```
+
+The binary lands in `target/production/numen`.
+
+Two things set it apart from a plain `cargo build`.
+
+The `production` profile turns on fat LTO and a single codegen unit. Faster node, slower build, more memory.
+
+The `metadata-hash` feature bakes the runtime metadata hash into the wasm. Hardware wallets like Ledger and Polkadot Vault need it to verify what they sign. Costs a second wasm build.
+
+Expect well over an hour on a cold cache.

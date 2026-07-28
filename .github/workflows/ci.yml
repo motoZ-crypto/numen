@@ -40,8 +40,8 @@ jobs:
       - uses: ./.github/actions/free-disk-space
       - uses: ./.github/actions/ubuntu-dependencies
       - name: Build runtime wasm (no_std)
-        run: cargo check -p numen-runtime --locked
-        timeout-minutes: 30
+        run: cargo check -p numen-runtime --locked --features metadata-hash
+        timeout-minutes: 45
 
   determinism:
     name: determinism (${{ matrix.arch }})

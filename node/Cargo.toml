@@ -120,6 +120,9 @@ substrate-build-script-utils.workspace = true
 [features]
 default = ["std"]
 std = ["numen-runtime/std"]
+# Bake the metadata hash into the runtime so hardware wallets can verify
+# what they sign. Off by default because it builds the wasm twice.
+metadata-hash = ["numen-runtime/metadata-hash"]
 # Dependencies that are only required if runtime benchmarking should be build.
 runtime-benchmarks = [
 	"frame-benchmarking-cli/runtime-benchmarks",
