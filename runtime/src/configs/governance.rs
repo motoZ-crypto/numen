@@ -180,7 +180,7 @@ parameter_types! {
 }
 
 impl pallet_conviction_voting::Config for Runtime {
-	type WeightInfo = pallet_conviction_voting::weights::SubstrateWeight<Runtime>;
+	type WeightInfo = crate::weights::pallet_conviction_voting::WeightInfo<Runtime>;
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type VoteLockingPeriod = VoteLockingPeriod;
@@ -258,20 +258,29 @@ impl EnsureOrigin<RuntimeOrigin> for EnsureQualifiedIdentity {
 	#[cfg(feature = "runtime-benchmarks")]
 	fn try_successful_origin() -> Result<RuntimeOrigin, ()> {
 		let who: AccountId = frame_benchmarking::whitelisted_caller();
-		let info = pallet_identity::legacy::IdentityInfo {
-			twitter: Data::Raw(b"@bench".to_vec().try_into().map_err(|_| ())?),
-			..Default::default()
-		};
-		let registration = pallet_identity::Registration {
-			judgements: alloc::vec![(0, Judgement::Reasonable)]
-				.try_into()
-				.map_err(|_| ())?,
-			deposit: 0,
-			info,
-		};
-		pallet_identity::IdentityOf::<Runtime>::insert(&who, registration);
+		qualify_identity(&who);
 		Ok(RawOrigin::Signed(who).into())
 	}
+}
+
+/// Write a judged identity carrying a plaintext social channel straight into
+/// storage so `who` passes [`QualifiedIdentity`]. Benchmarks cannot run a
+/// registrar, yet every gate built on the identity standard needs an account
+/// that clears it.
+#[cfg(feature = "runtime-benchmarks")]
+pub fn qualify_identity(who: &AccountId) {
+	let info = pallet_identity::legacy::IdentityInfo {
+		twitter: Data::Raw(b"@bench".to_vec().try_into().expect("handle fits the field bound")),
+		..Default::default()
+	};
+	let registration = pallet_identity::Registration {
+		judgements: alloc::vec![(0, Judgement::Reasonable)]
+			.try_into()
+			.expect("one judgement fits MaxRegistrars"),
+		deposit: 0,
+		info,
+	};
+	pallet_identity::IdentityOf::<Runtime>::insert(who, registration);
 }
 
 impl pallet_referenda::Config for Runtime {

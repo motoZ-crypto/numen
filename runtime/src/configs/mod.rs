@@ -101,13 +101,15 @@ impl frame_system::Config for Runtime {
 	/// Numen brand.
 	type SS58Prefix = SS58Prefix;
 	type MaxConsumers = frame_support::traits::ConstU32<16>;
+	type SystemWeightInfo = crate::weights::frame_system::WeightInfo<Runtime>;
+	type ExtensionsWeightInfo = crate::weights::frame_system_extensions::WeightInfo<Runtime>;
 }
 
 impl pallet_timestamp::Config for Runtime {
 	type Moment = u64;
 	type OnTimestampSet = ();
 	type MinimumPeriod = ConstU64<2_000>;
-	type WeightInfo = ();
+	type WeightInfo = crate::weights::pallet_timestamp::WeightInfo<Runtime>;
 }
 
 impl pallet_balances::Config for Runtime {
@@ -121,7 +123,7 @@ impl pallet_balances::Config for Runtime {
 	type DustRemoval = ();
 	type ExistentialDeposit = ConstU128<EXISTENTIAL_DEPOSIT>;
 	type AccountStore = System;
-	type WeightInfo = pallet_balances::weights::SubstrateWeight<Runtime>;
+	type WeightInfo = crate::weights::pallet_balances::WeightInfo<Runtime>;
 	type FreezeIdentifier = RuntimeFreezeReason;
 	type MaxFreezes = VariantCountOf<RuntimeFreezeReason>;
 	type RuntimeHoldReason = RuntimeHoldReason;
@@ -143,6 +145,7 @@ impl pallet_reward::Config for Runtime {
 	type FindAuthor = PowFindAuthor;
 	type InitialReward = InitialReward;
 	type HalvingInterval = HalvingInterval;
+	type WeightInfo = pallet_reward::weights::SubstrateWeight<Runtime>;
 }
 
 parameter_types! {
@@ -199,7 +202,7 @@ impl pallet_transaction_payment::Config for Runtime {
 	type WeightToFee = ConstantMultiplier<Balance, ConstU128<WEIGHT_FEE>>;
 	type LengthToFee = ConstantMultiplier<Balance, ConstU128<LENGTH_FEE>>;
 	type FeeMultiplierUpdate = SlowAdjustingFeeUpdate<Runtime>;
-	type WeightInfo = pallet_transaction_payment::weights::SubstrateWeight<Runtime>;
+	type WeightInfo = crate::weights::pallet_transaction_payment::WeightInfo<Runtime>;
 }
 
 impl pallet_prime::Config for Runtime {
@@ -221,7 +224,7 @@ impl pallet_multisig::Config for Runtime {
 	type DepositBase = MultisigDepositBase;
 	type DepositFactor = MultisigDepositFactor;
 	type MaxSignatories = ConstU32<100>;
-	type WeightInfo = pallet_multisig::weights::SubstrateWeight<Runtime>;
+	type WeightInfo = crate::weights::pallet_multisig::WeightInfo<Runtime>;
 	type BlockNumberProvider = System;
 }
 
@@ -229,7 +232,7 @@ impl pallet_utility::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeCall = RuntimeCall;
 	type PalletsOrigin = OriginCaller;
-	type WeightInfo = pallet_utility::weights::SubstrateWeight<Runtime>;
+	type WeightInfo = crate::weights::pallet_utility::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -312,7 +315,7 @@ impl pallet_proxy::Config for Runtime {
 	type ProxyDepositBase = ProxyDepositBase;
 	type ProxyDepositFactor = ProxyDepositFactor;
 	type MaxProxies = ConstU32<32>;
-	type WeightInfo = pallet_proxy::weights::SubstrateWeight<Runtime>;
+	type WeightInfo = crate::weights::pallet_proxy::WeightInfo<Runtime>;
 	type MaxPending = ConstU32<32>;
 	type CallHasher = BlakeTwo256;
 	type AnnouncementDepositBase = AnnouncementDepositBase;
@@ -339,7 +342,7 @@ impl pallet_vesting::Config for Runtime {
 	type MinVestedTransfer = MinVestedTransfer;
 	type UnvestedFundsAllowedWithdrawReasons = UnvestedFundsAllowedWithdrawReasons;
 	type BlockNumberProvider = System;
-	type WeightInfo = pallet_vesting::weights::SubstrateWeight<Runtime>;
+	type WeightInfo = crate::weights::pallet_vesting::WeightInfo<Runtime>;
 	const MAX_VESTING_SCHEDULES: u32 = 28;
 }
 
@@ -347,6 +350,7 @@ impl pallet_difficulty::Config for Runtime {
 	type TargetBlockTime = TargetBlockTime;
 	type Halflife = DifficultyHalflife;
 	type BreakThresholdSecs = DifficultyBreakThresholdSecs;
+	type WeightInfo = pallet_difficulty::weights::SubstrateWeight<Runtime>;
 }
 
 parameter_types! {
@@ -454,6 +458,9 @@ impl pallet_validator::Config for Runtime {
 	type OfflineThreshold = ConstU32<1>;
 	#[allow(clippy::identity_op)]
 	type RejoinCooldownPeriod = ConstU32<{ 1 * DAYS }>;
+	type WeightInfo = pallet_validator::weights::SubstrateWeight<Runtime>;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = ValidatorBenchmarkHelper;
 }
 
 #[cfg(feature = "zombienet-runtime")]
@@ -477,6 +484,9 @@ impl pallet_validator::Config for Runtime {
 	type RenewInterval = ConstU32<{ 3 * MINUTES }>;
 	type OfflineThreshold = ConstU32<1>;
 	type RejoinCooldownPeriod = ConstU32<{ SessionPeriod::get() + 5 * MINUTES }>;
+	type WeightInfo = pallet_validator::weights::SubstrateWeight<Runtime>;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = ValidatorBenchmarkHelper;
 }
 
 /// Adapter wiring `pallet_validator::SessionInterface` to `pallet-session`.
@@ -487,7 +497,22 @@ impl pallet_validator::SessionInterface<AccountId> for ValidatorSessionAdapter {
 	fn has_keys(who: &AccountId) -> bool {
 		pallet_session::NextKeys::<Runtime>::contains_key(who)
 	}
-	
+}
+
+/// Walks a benchmark account past both validator entry gates. The keys are
+/// zero bytes since `has_keys` only tests for presence and nothing signs with
+/// them during a benchmark.
+#[cfg(feature = "runtime-benchmarks")]
+pub struct ValidatorBenchmarkHelper;
+
+#[cfg(feature = "runtime-benchmarks")]
+impl pallet_validator::BenchmarkHelper<AccountId> for ValidatorBenchmarkHelper {
+	fn make_eligible(who: &AccountId) {
+		governance::qualify_identity(who);
+		let keys = SessionKeys::decode(&mut sp_runtime::traits::TrailingZeroInput::zeroes())
+			.expect("session keys decode from zero bytes");
+		pallet_session::NextKeys::<Runtime>::insert(who, keys);
+	}
 }
 /// `ValidatorSetWithIdentification` adapter over `pallet-session`.
 ///
@@ -603,7 +628,7 @@ impl pallet_im_online::Config for Runtime {
 	type UnsignedPriority = ImOnlineUnsignedPriority;
 	type MaxKeys = ImOnlineMaxKeys;
 	type MaxPeerInHeartbeats = ImOnlineMaxPeerInHeartbeats;
-	type WeightInfo = ();
+	type WeightInfo = crate::weights::pallet_im_online::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -663,7 +688,7 @@ impl pallet_bounties::Config for Runtime {
 	type BountyValueMinimum = BountyValueMinimum;
 	type DataDepositPerByte = DataDepositPerByte;
 	type MaximumReasonLength = MaximumReasonLength;
-	type WeightInfo = pallet_bounties::weights::SubstrateWeight<Runtime>;
+	type WeightInfo = crate::weights::pallet_bounties::WeightInfo<Runtime>;
 	type ChildBountyManager = ChildBounties;
 	type OnSlash = Treasury;
 	type TransferAllAssets = ();
@@ -697,7 +722,7 @@ impl pallet_scheduler::Config for Runtime {
 	type MaxScheduledPerBlock = ConstU32<512>;
 	#[cfg(not(feature = "runtime-benchmarks"))]
 	type MaxScheduledPerBlock = ConstU32<50>;
-	type WeightInfo = pallet_scheduler::weights::SubstrateWeight<Runtime>;
+	type WeightInfo = crate::weights::pallet_scheduler::WeightInfo<Runtime>;
 	type OriginPrivilegeCmp = EqualPrivilegeOnly;
 	type Preimages = Preimage;
 	type BlockNumberProvider = System;
@@ -711,7 +736,7 @@ parameter_types! {
 }
 
 impl pallet_preimage::Config for Runtime {
-	type WeightInfo = pallet_preimage::weights::SubstrateWeight<Runtime>;
+	type WeightInfo = crate::weights::pallet_preimage::WeightInfo<Runtime>;
 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type ManagerOrigin = EnsureRoot<AccountId>;

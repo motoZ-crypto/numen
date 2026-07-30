@@ -39,7 +39,11 @@ fn upgrade_replaces_runtime_code() {
 	});
 }
 
+// `frame_system` compiles out the spec version check under
+// `runtime-benchmarks` so that its own `set_code` benchmark can run, and the
+// `not(test)` guard on that switch does not apply to a dependency crate.
 #[test]
+#[cfg(not(feature = "runtime-benchmarks"))]
 fn upgrade_keeps_system_version_checks() {
 	new_test_ext_with_version(upgrade_version(1)).execute_with(|| {
 		assert_noop!(

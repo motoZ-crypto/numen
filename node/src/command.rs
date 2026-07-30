@@ -127,9 +127,10 @@ pub fn run() -> sc_cli::Result<()> {
 							);
 						}
 
-						cmd.run_with_spec::<sp_runtime::traits::HashingFor<Block>, ()>(Some(
-							config.chain_spec,
-						))
+						cmd.run_with_spec::<
+							sp_runtime::traits::HashingFor<Block>,
+							cumulus_primitives_proof_size_hostfunction::storage_proof_size::HostFunctions,
+						>(Some(config.chain_spec))
 					},
 					BenchmarkCmd::Block(cmd) => {
 						let PartialComponents { client, .. } = service::new_partial(&config)?;
