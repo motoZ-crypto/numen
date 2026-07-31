@@ -7,10 +7,15 @@
 
 pub use pallet::*;
 
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
 #[cfg(test)]
 mod mock;
 #[cfg(test)]
 mod tests;
+
+pub mod weights;
+pub use weights::*;
 
 extern crate alloc;
 
@@ -37,6 +42,21 @@ impl<AccountId> SessionInterface<AccountId> for () {
     fn has_keys(_who: &AccountId) -> bool {
         true
     }
+}
+
+/// Benchmark-only setup hook.
+///
+/// Both gates guarding `lock` live outside this pallet, so a generic benchmark
+/// cannot walk a candidate past them. The runtime owns that setup, which also
+/// makes the benchmark pay the real cost of both lookups.
+#[cfg(feature = "runtime-benchmarks")]
+pub trait BenchmarkHelper<AccountId> {
+    fn make_eligible(who: &AccountId);
+}
+
+#[cfg(feature = "runtime-benchmarks")]
+impl<AccountId> BenchmarkHelper<AccountId> for () {
+    fn make_eligible(_who: &AccountId) {}
 }
 
 /// Balance type alias derived from the configured `Currency`.
@@ -132,6 +152,14 @@ pub mod pallet {
         /// Blocks a kicked validator must wait before staking again.
         #[pallet::constant]
         type RejoinCooldownPeriod: Get<BlockNumberFor<Self>>;
+
+        /// Weight information for extrinsics in this pallet.
+        type WeightInfo: WeightInfo;
+
+        /// Setup hook that walks a benchmark account past the identity gate
+        /// and the session key check.
+        #[cfg(feature = "runtime-benchmarks")]
+        type BenchmarkHelper: BenchmarkHelper<Self::AccountId>;
     }
 
     /// Active validator lock records, keyed by account.
@@ -297,10 +325,12 @@ pub mod pallet {
             let interval = T::RenewInterval::get();
 
             // First pass: collect expired locks and (when enabled) renewal candidates.
+            let mut scanned = 0u32;
             let mut to_release: alloc::vec::Vec<(T::AccountId, BalanceOf<T>)> =
                 alloc::vec::Vec::new();
             let mut to_renew: alloc::vec::Vec<T::AccountId> = alloc::vec::Vec::new();
             for (who, info) in ValidatorLocks::<T>::iter() {
+                scanned.saturating_inc();
                 if info.expiry_block <= now {
                     to_release.push((who, info.amount));
                     continue;
@@ -319,7 +349,6 @@ pub mod pallet {
             // Also clear stale liveness-tracking entries keyed by the account.
             // `RejoinCooldown` is intentionally preserved: it represents a
             // post-release penalty that must outlive the underlying lock.
-            let release_count = to_release.len() as u64;
             for (who, amount) in to_release {
                 T::Currency::remove_lock(T::LockId::get(), &who);
                 ValidatorLocks::<T>::remove(&who);
@@ -327,7 +356,6 @@ pub mod pallet {
             }
 
             // Renew Active locks whose elapsed window has reached the configured interval.
-            let renew_count = to_renew.len() as u64;
             for who in to_renew {
                 ValidatorLocks::<T>::mutate(&who, |maybe_info| {
                     if let Some(info) = maybe_info {
@@ -341,9 +369,10 @@ pub mod pallet {
                 });
             }
 
-            // Rough weight: one read per scanned lock + one write per mutation.
-            let count = release_count.saturating_add(renew_count);
-            T::DbWeight::get().reads_writes(count, count)
+            // Billed on the scan length, not on the mutation count. The sweep
+            // reads every lock even when nothing expires, and the benchmark
+            // measures the release path, so a pure scan is covered too.
+            T::WeightInfo::on_initialize(scanned)
         }
     }
 
@@ -359,7 +388,7 @@ pub mod pallet {
         /// refreshes that lock instead of placing a second one. The refresh
         /// only ever tightens it, so rejoining never returns stake early.
         #[pallet::call_index(0)]
-        #[pallet::weight(Weight::from_parts(50_000_000, 0))]
+        #[pallet::weight(T::WeightInfo::lock())]
         pub fn lock(origin: OriginFor<T>) -> DispatchResult {
             let who = ensure_signed(origin)?;
 
@@ -455,7 +484,7 @@ pub mod pallet {
         /// place until its original `expiry_block` is reached; early unlocking
         /// is not permitted.
         #[pallet::call_index(1)]
-        #[pallet::weight(Weight::from_parts(40_000_000, 0))]
+        #[pallet::weight(T::WeightInfo::request_exit())]
         pub fn request_exit(origin: OriginFor<T>) -> DispatchResult {
             let who = ensure_signed(origin)?;
 
@@ -485,7 +514,7 @@ pub mod pallet {
         /// Revoking does not touch validators already in the set; their lock
         /// amount was fixed when they joined.
         #[pallet::call_index(2)]
-        #[pallet::weight(Weight::from_parts(30_000_000, 0))]
+        #[pallet::weight(T::WeightInfo::set_stake_exempt())]
         pub fn set_stake_exempt(
             origin: OriginFor<T>,
             who: T::AccountId,

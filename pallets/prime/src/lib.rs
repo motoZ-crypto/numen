@@ -9,6 +9,8 @@ extern crate alloc;
 
 pub use pallet::*;
 
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
 #[cfg(test)]
 mod mock;
 #[cfg(test)]
@@ -99,7 +101,7 @@ pub mod pallet {
 
 	impl<T: Config> Pallet<T> {
 		/// Require a signed origin matching the stored prime key.
-		fn ensure_prime(origin: OriginFor<T>) -> Result<T::AccountId, DispatchError> {
+		pub(crate) fn ensure_prime(origin: OriginFor<T>) -> Result<T::AccountId, DispatchError> {
 			let who = ensure_signed(origin)?;
 			ensure!(Key::<T>::get().as_ref() == Some(&who), Error::<T>::RequirePrime);
 			Ok(who)

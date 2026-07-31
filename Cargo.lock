@@ -7248,6 +7248,7 @@ dependencies = [
 name = "pallet-difficulty"
 version = "0.1.0"
 dependencies = [
+ "frame-benchmarking",
  "frame-support",
  "frame-system",
  "pallet-timestamp",
@@ -7497,6 +7498,7 @@ dependencies = [
 name = "pallet-prime"
 version = "0.1.0"
 dependencies = [
+ "frame-benchmarking",
  "frame-support",
  "frame-system",
  "parity-scale-codec",
@@ -7540,6 +7542,7 @@ dependencies = [
 name = "pallet-reward"
 version = "0.1.0"
 dependencies = [
+ "frame-benchmarking",
  "frame-support",
  "frame-system",
  "pallet-balances",
@@ -7728,6 +7731,7 @@ dependencies = [
 name = "pallet-validator"
 version = "0.1.0"
 dependencies = [
+ "frame-benchmarking",
  "frame-support",
  "frame-system",
  "log",

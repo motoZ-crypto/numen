@@ -104,6 +104,9 @@ impl pallet_validator::Config for Test {
 	type RenewInterval = ConstU64<5>;
 	type OfflineThreshold = ConstU32<2>;
 	type RejoinCooldownPeriod = ConstU64<20>;
+	type WeightInfo = ();
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = ();
 }
 
 pub const ALICE: AccountId = 1;

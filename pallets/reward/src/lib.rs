@@ -13,13 +13,19 @@
 
 pub use pallet::*;
 
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
 #[cfg(test)]
 mod mock;
 #[cfg(test)]
 mod tests;
 
+pub mod weights;
+pub use weights::*;
+
 #[frame_support::pallet]
 pub mod pallet {
+    use crate::weights::WeightInfo;
     use frame_support::{
         pallet_prelude::*,
         traits::{Currency, FindAuthor},
@@ -45,6 +51,9 @@ pub mod pallet {
         /// Block count between reward halvings.
         #[pallet::constant]
         type HalvingInterval: Get<BlockNumberFor<Self>>;
+
+        /// Weight information for this pallet's block hook.
+        type WeightInfo: WeightInfo;
     }
 
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(0);
@@ -55,6 +64,12 @@ pub mod pallet {
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+        // `on_finalize` has no way to report what it spent, so the author
+        // payout is paid for up front here.
+        fn on_initialize(_n: BlockNumberFor<T>) -> Weight {
+            T::WeightInfo::on_finalize()
+        }
+
         fn on_finalize(n: BlockNumberFor<T>) {
             if let Some(author) = Self::find_author() {
                 let reward = Self::block_reward(n);

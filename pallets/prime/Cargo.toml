@@ -11,6 +11,7 @@ publish = false
 
 [dependencies]
 codec = { features = ["derive"], workspace = true }
+frame-benchmarking = { optional = true, workspace = true }
 frame-support.workspace = true
 frame-system.workspace = true
 scale-info = { features = ["derive"], workspace = true }
@@ -31,11 +32,14 @@ sp-version.workspace = true
 default = ["std"]
 std = [
 	"codec/std",
+	"frame-benchmarking?/std",
 	"frame-support/std",
 	"frame-system/std",
 	"scale-info/std",
 ]
 runtime-benchmarks = [
+	"dep:frame-benchmarking",
+	"frame-benchmarking/runtime-benchmarks",
 	"frame-support/runtime-benchmarks",
 	"frame-system/runtime-benchmarks",
 ]

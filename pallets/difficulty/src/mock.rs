@@ -42,6 +42,7 @@ impl pallet_difficulty::Config for Test {
 	type TargetBlockTime = ConstU64<20>;
 	type Halflife = ConstU64<1800>;
 	type BreakThresholdSecs = ConstU64<1800>;
+	type WeightInfo = ();
 }
 
 /// Initial difficulty used by tests.

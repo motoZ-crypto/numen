@@ -213,7 +213,7 @@ impl pallet_evm::Config for Runtime {
 	type GasLimitPovSizeRatio = GasLimitPovSizeRatio;
 	type GasLimitStorageGrowthRatio = GasLimitStorageGrowthRatio;
 	type Timestamp = Timestamp;
-	type WeightInfo = pallet_evm::weights::SubstrateWeight<Self>;
+	type WeightInfo = crate::weights::pallet_evm::WeightInfo<Self>;
 }
 
 parameter_types! {

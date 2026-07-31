@@ -15,10 +15,15 @@ pub use pallet::*;
 
 pub mod asert;
 
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
 #[cfg(test)]
 mod mock;
 #[cfg(test)]
 mod tests;
+
+pub mod weights;
+pub use weights::*;
 
 sp_api::decl_runtime_apis! {
 	/// Runtime API for querying ASERT difficulty parameters and computing
@@ -44,6 +49,7 @@ sp_api::decl_runtime_apis! {
 
 #[frame_support::pallet]
 pub mod pallet {
+	use crate::weights::WeightInfo;
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
 	use sp_core::U256;
@@ -67,6 +73,9 @@ pub mod pallet {
 		/// Interruption threshold in seconds.
 		#[pallet::constant]
 		type BreakThresholdSecs: Get<u64>;
+
+		/// Weight information for this pallet's block hook.
+		type WeightInfo: WeightInfo;
 	}
 
 	/// Current mining difficulty (U256).
@@ -143,6 +152,12 @@ pub mod pallet {
 
 	#[pallet::hooks]
 	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+		// `on_finalize` has no way to report what it spent, so the ASERT
+		// update is paid for up front here.
+		fn on_initialize(_n: BlockNumberFor<T>) -> Weight {
+			<T as Config>::WeightInfo::on_finalize()
+		}
+
 		fn on_finalize(_n: BlockNumberFor<T>) {
 			let current_height: u64 = frame_system::Pallet::<T>::block_number()
 										.try_into()

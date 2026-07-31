@@ -75,6 +75,7 @@ impl pallet_reward::Config for Test {
     type FindAuthor = PowFindAuthor;
     type InitialReward = ConstU128<1024>;
     type HalvingInterval = ConstU64<10>;
+    type WeightInfo = ();
 }
 
 pub fn new_test_ext() -> sp_io::TestExternalities {

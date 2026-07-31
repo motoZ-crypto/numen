@@ -9,6 +9,7 @@ pub mod apis;
 mod benchmarks;
 pub mod configs;
 pub mod inherent_checks;
+pub mod weights;
 
 extern crate alloc;
 use alloc::vec::Vec;
