@@ -404,7 +404,7 @@ pub fn new_full<
 				Some(pre_runtime),
 				move |_, ()| async { Ok(sp_timestamp::InherentDataProvider::from_system_time()) },
 				Duration::from_secs(1),
-				Duration::from_secs(1),
+				Duration::from_secs(2),
 			);
 
 			task_manager.spawn_essential_handle().spawn_blocking(
