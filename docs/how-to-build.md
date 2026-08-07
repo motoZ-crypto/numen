@@ -18,7 +18,7 @@ rustup update
 rustup target add wasm32v1-none
 rustup component add rust-src
 
-git clone https://github.com/motoZ-crypto/numen.git
+git clone https://github.com/numen-network/numen.git
 cd numen
 cargo build
 ```
@@ -135,7 +135,7 @@ rustc 1.84.0 (...)
 ## Building the Project
 
 ```bash
-git clone https://github.com/motoZ-crypto/numen.git
+git clone https://github.com/numen-network/numen.git
 cd numen
 cargo build
 ```

@@ -1,8 +1,8 @@
 [workspace.package]
 license = "MIT"
-authors = ["motoZ-crypto"]
-homepage = "https://github.com/motoZ-crypto/numen"
-repository = "https://github.com/motoZ-crypto/numen.git"
+authors = ["numen-network"]
+homepage = "https://github.com/numen-network/numen"
+repository = "https://github.com/numen-network/numen.git"
 edition = "2024"
 
 [workspace]
@@ -48,7 +48,7 @@ codec = { version = "3.7.4", default-features = false, package = "parity-scale-c
 libm = { version = "=0.2.16" }
 rand_pcg = { version = "=0.10.2", default-features = false }
 rand_core = { version = "=0.10.1", default-features = false }
-spectral3d = { git = "https://github.com/motoZ-crypto/spectral3d.git", rev = "af77fd9" }
+spectral3d = { git = "https://github.com/numen-network/spectral3d.git", rev = "af77fd9" }
 # precompile-utils third-party deps
 environmental = { version = "1.1.4", default-features = false }
 num_enum = { version = "0.7.6", default-features = false }

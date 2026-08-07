@@ -12380,7 +12380,7 @@ dependencies = [
 [[package]]
 name = "spectral3d"
 version = "1.1.0"
-source = "git+https://github.com/motoZ-crypto/spectral3d.git?rev=af77fd9#af77fd99dc8dce93adb4eb869b667a03bccfe78b"
+source = "git+https://github.com/numen-network/spectral3d.git?rev=af77fd9#af77fd99dc8dce93adb4eb869b667a03bccfe78b"
 dependencies = [
  "libm",
  "sha2 0.11.0",
