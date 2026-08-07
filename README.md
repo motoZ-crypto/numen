@@ -4,9 +4,9 @@
 
 A Layer 1 blockchain powered by Proof of Scan, built with the Polkadot SDK.
 
-![GitHub stars](https://img.shields.io/github/stars/motoZ-crypto/numen)&nbsp;&nbsp;![GitHub forks](https://img.shields.io/github/forks/motoZ-crypto/numen)
+![GitHub stars](https://img.shields.io/github/stars/numen-network/numen)&nbsp;&nbsp;![GitHub forks](https://img.shields.io/github/forks/numen-network/numen)
 
-[![CI](https://img.shields.io/github/actions/workflow/status/motoZ-crypto/numen/ci.yml?label=CI)](https://github.com/motoZ-crypto/numen/actions/workflows/ci.yml)&nbsp;&nbsp;[![License](https://img.shields.io/github/license/motoZ-crypto/numen)](LICENSE)&nbsp;&nbsp;[![Last commit](https://img.shields.io/github/last-commit/motoZ-crypto/numen)](https://github.com/motoZ-crypto/numen/commits/master)&nbsp;&nbsp;[![Discord](https://img.shields.io/discord/1528532360113684590?logo=discord&label=Discord)](https://discord.gg/WKmyTfmaa)&nbsp;&nbsp;[![Website](https://img.shields.io/badge/Website-numen--network.org-blue)](https://www.numen-network.org)
+[![CI](https://img.shields.io/github/actions/workflow/status/numen-network/numen/ci.yml?label=CI)](https://github.com/numen-network/numen/actions/workflows/ci.yml)&nbsp;&nbsp;[![License](https://img.shields.io/github/license/numen-network/numen)](LICENSE)&nbsp;&nbsp;[![Last commit](https://img.shields.io/github/last-commit/numen-network/numen)](https://github.com/numen-network/numen/commits/master)&nbsp;&nbsp;[![Discord](https://img.shields.io/discord/1528532360113684590?logo=discord&label=Discord)](https://discord.gg/WKmyTfmaa)&nbsp;&nbsp;[![Website](https://img.shields.io/badge/Website-numen--network.org-blue)](https://www.numen-network.org)
 
 </div>
 
@@ -23,7 +23,7 @@ Disk usage grows as the chain does.
 
 ## Getting Started
 
-Grab a prebuilt binary from the [releases page](https://github.com/motoZ-crypto/numen/releases). Each archive holds the `numen` binary and `testnet-raw.json`. Nothing else to download.
+Grab a prebuilt binary from the [releases page](https://github.com/numen-network/numen/releases). Each archive holds the `numen` binary and `testnet-raw.json`. Nothing else to download.
 
 ```bash
 tar -xzf numen-linux-x86_64.tar.gz

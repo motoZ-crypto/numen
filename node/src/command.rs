@@ -29,7 +29,7 @@ impl SubstrateCli for Cli {
 	}
 
 	fn support_url() -> String {
-		"https://github.com/motoZ-crypto/crypto/issues".into()
+		"https://github.com/numen-network/numen/issues".into()
 	}
 
 	fn copyright_start_year() -> i32 {
