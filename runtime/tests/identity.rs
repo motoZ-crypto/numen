@@ -1,18 +1,13 @@
-//! Identity wiring. Registrar and force entry points answer only to the prime
-//! key, deposits are priced per encoded byte, and a killed identity's deposit
-//! lands in the treasury.
+//! Identity wiring. Registrar and username entry points answer only to the
+//! prime key, deposits are priced per encoded byte, and nobody can force an
+//! identity off the chain.
 
 mod common;
 
 use codec::Encode;
 use common::new_test_ext;
-use frame_support::{
-	assert_noop, assert_ok,
-	traits::tokens::fungible::{Inspect, Mutate},
-};
-use numen_runtime::{
-	AccountId, Balance, Balances, Identity, Runtime, RuntimeOrigin, Treasury, UNIT,
-};
+use frame_support::{assert_noop, assert_ok, traits::tokens::fungible::Mutate};
+use numen_runtime::{AccountId, Balance, Balances, Identity, Runtime, RuntimeOrigin, UNIT};
 use pallet_identity::legacy::IdentityInfo;
 use sp_keyring::Sr25519Keyring;
 use sp_runtime::{traits::StaticLookup, DispatchError};
@@ -90,8 +85,10 @@ fn identity_deposit_prices_encoded_bytes() {
 	});
 }
 
+/// Pins the decision to drop force removal. Re-wiring `ForceOrigin` back to
+/// prime would let it slash any account's identity deposit.
 #[test]
-fn killed_identity_deposit_lands_in_treasury() {
+fn prime_cannot_kill_identity() {
 	new_test_ext().execute_with(|| {
 		let key = install_prime();
 		let who = Sr25519Keyring::Alice.to_account_id();
@@ -102,14 +99,12 @@ fn killed_identity_deposit_lands_in_treasury() {
 			Box::new(info.clone()),
 		));
 		let deposit = expected_deposit(&info);
+
+		assert_noop!(
+			Identity::kill_identity(RuntimeOrigin::signed(key), src(&who)),
+			DispatchError::BadOrigin,
+		);
+
 		assert_eq!(Balances::reserved_balance(&who), deposit);
-
-		let treasury = Treasury::account_id();
-		let treasury_before = Balances::balance(&treasury);
-
-		assert_ok!(Identity::kill_identity(RuntimeOrigin::signed(key), src(&who)));
-
-		assert_eq!(Balances::reserved_balance(&who), 0);
-		assert_eq!(Balances::balance(&treasury), treasury_before + deposit);
 	});
 }

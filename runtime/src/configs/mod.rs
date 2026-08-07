@@ -773,7 +773,10 @@ impl pallet_identity::Config for Runtime {
 	type IdentityInformation = pallet_identity::legacy::IdentityInfo<ConstU32<4>>;
 	type MaxRegistrars = ConstU32<20>;
 	type Slashed = Treasury;
-	type ForceOrigin = pallet_prime::EnsurePrime<Runtime>;
+	// Unreachable with no Root track and no sudo. Killing an identity only clears
+	// current state. The payload stays in the block that set it, so the power
+	// removes nothing while handing prime a way to slash someone's deposit.
+	type ForceOrigin = EnsureRoot<AccountId>;
 	type RegistrarOrigin = pallet_prime::EnsurePrime<Runtime>;
 	type OffchainSignature = Signature;
 	type SigningPublicKey = <Signature as Verify>::Signer;

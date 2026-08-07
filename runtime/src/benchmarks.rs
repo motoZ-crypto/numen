@@ -32,7 +32,8 @@ frame_benchmarking::define_benchmarks!(
 	[pallet_proxy, Proxy]
 	[pallet_prime, Prime]
 	[pallet_vesting, Vesting]
-	// `pallet_identity` stays out. Its `kill_username` benchmark dispatches
-	// from Root while `ForceOrigin` here only accepts the prime key. Weights
-	// stay on the upstream values.
+	// `pallet_identity` stays out until its weights get generated. The old
+	// blocker is gone now that `ForceOrigin` is `EnsureRoot`, which is what its
+	// `kill_username` benchmark dispatches from. Weights stay on the upstream
+	// values meanwhile.
 );
