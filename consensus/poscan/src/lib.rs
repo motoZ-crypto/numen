@@ -37,7 +37,7 @@ pub const EPS_SCALE: f64 = 1e-5;
 /// Domain separation prefix. 
 /// 
 /// Any parameter change must bump it so old and new work land in disjoint spaces.
-pub const POSCAN_PROTOCOL: &[u8] = b"poscan-v2";
+pub const POSCAN_PROTOCOL: &[u8] = b"poscan-v1";
 
 // ── Core types (no_std) ─────────────────────────────────────────────
 
